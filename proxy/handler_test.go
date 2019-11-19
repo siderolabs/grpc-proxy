@@ -4,6 +4,7 @@
 package proxy_test
 
 import (
+	"context"
 	"io"
 	"log"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -107,16 +107,21 @@ type ProxyHappySuite struct {
 
 	client     *grpc.ClientConn
 	testClient pb.TestServiceClient
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
-func (s *ProxyHappySuite) ctx() context.Context {
-	// Make all RPC calls last at most 1 sec, meaning all async issues or deadlock will not kill tests.
-	ctx, _ := context.WithTimeout(context.TODO(), 120*time.Second)
-	return ctx
+func (s *ProxyHappySuite) SetupTest() {
+	s.ctx, s.ctxCancel = context.WithTimeout(context.TODO(), 120*time.Second)
+}
+
+func (s *ProxyHappySuite) TearDownTest() {
+	s.ctxCancel()
 }
 
 func (s *ProxyHappySuite) TestPingEmptyCarriesClientMetadata() {
-	ctx := metadata.NewOutgoingContext(s.ctx(), metadata.Pairs(clientMdKey, "true"))
+	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(clientMdKey, "true"))
 	out, err := s.testClient.PingEmpty(ctx, &pb.Empty{})
 	require.NoError(s.T(), err, "PingEmpty should succeed without errors")
 	require.Equal(s.T(), &pb.PingResponse{Value: pingDefaultValue, Counter: 42}, out)
@@ -132,7 +137,7 @@ func (s *ProxyHappySuite) TestPingCarriesServerHeadersAndTrailers() {
 	headerMd := make(metadata.MD)
 	trailerMd := make(metadata.MD)
 	// This is an awkward calling convention... but meh.
-	out, err := s.testClient.Ping(s.ctx(), &pb.PingRequest{Value: "foo"}, grpc.Header(&headerMd), grpc.Trailer(&trailerMd))
+	out, err := s.testClient.Ping(s.ctx, &pb.PingRequest{Value: "foo"}, grpc.Header(&headerMd), grpc.Trailer(&trailerMd))
 	require.NoError(s.T(), err, "Ping should succeed without errors")
 	require.Equal(s.T(), &pb.PingResponse{Value: "foo", Counter: 42}, out)
 	assert.Contains(s.T(), headerMd, serverHeaderMdKey, "server response headers must contain server data")
@@ -140,7 +145,7 @@ func (s *ProxyHappySuite) TestPingCarriesServerHeadersAndTrailers() {
 }
 
 func (s *ProxyHappySuite) TestPingErrorPropagatesAppError() {
-	_, err := s.testClient.PingError(s.ctx(), &pb.PingRequest{Value: "foo"})
+	_, err := s.testClient.PingError(s.ctx, &pb.PingRequest{Value: "foo"})
 	require.Error(s.T(), err, "PingError should never succeed")
 	assert.Equal(s.T(), codes.FailedPrecondition, status.Code(err))
 	assert.Equal(s.T(), "Userspace error.", status.Convert(err).Message())
@@ -148,7 +153,7 @@ func (s *ProxyHappySuite) TestPingErrorPropagatesAppError() {
 
 func (s *ProxyHappySuite) TestDirectorErrorIsPropagated() {
 	// See SetupSuite where the StreamDirector has a special case.
-	ctx := metadata.NewOutgoingContext(s.ctx(), metadata.Pairs(rejectingMdKey, "true"))
+	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(rejectingMdKey, "true"))
 	_, err := s.testClient.Ping(ctx, &pb.PingRequest{Value: "foo"})
 	require.Error(s.T(), err, "Director should reject this RPC")
 	assert.Equal(s.T(), codes.PermissionDenied, status.Code(err))
@@ -156,7 +161,7 @@ func (s *ProxyHappySuite) TestDirectorErrorIsPropagated() {
 }
 
 func (s *ProxyHappySuite) TestPingStream_FullDuplexWorks() {
-	stream, err := s.testClient.PingStream(s.ctx())
+	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
 
 	for i := 0; i < countListResponses; i++ {
@@ -204,17 +209,24 @@ func (s *ProxyHappySuite) SetupSuite() {
 	// Setup of the proxy's Director.
 	s.serverClientConn, err = grpc.Dial(s.serverListener.Addr().String(), grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
-	director := func(ctx context.Context, fullName string) (context.Context, *grpc.ClientConn, error) {
+	director := func(ctx context.Context, fullName string) ([]proxy.Backend, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			if _, exists := md[rejectingMdKey]; exists {
-				return ctx, nil, status.Errorf(codes.PermissionDenied, "testing rejection")
+				return nil, status.Errorf(codes.PermissionDenied, "testing rejection")
 			}
 		}
-		// Explicitly copy the metadata, otherwise the tests will fail.
-		outCtx, _ := context.WithCancel(ctx)
-		outCtx = metadata.NewOutgoingContext(outCtx, md.Copy())
-		return outCtx, s.serverClientConn, nil
+
+		return []proxy.Backend{
+			&proxy.SingleBackend{
+				GetConn: func(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
+					md, _ := metadata.FromIncomingContext(ctx)
+					// Explicitly copy the metadata, otherwise the tests will fail.
+					outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
+					return outCtx, s.serverClientConn, nil
+				},
+			},
+		}, nil
 	}
 	s.proxy = grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()),

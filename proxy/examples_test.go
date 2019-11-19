@@ -4,9 +4,9 @@
 package proxy_test
 
 import (
+	"context"
 	"strings"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -37,26 +37,36 @@ func ExampleTransparentHandler() {
 // Provide sa simple example of a director that shields internal services and dials a staging or production backend.
 // This is a *very naive* implementation that creates a new connection on every request. Consider using pooling.
 func ExampleStreamDirector() {
-	director = func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
+	simpleBackendGen := func(hostname string) proxy.Backend {
+		return &proxy.SingleBackend{
+			GetConn: func(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
+				md, _ := metadata.FromIncomingContext(ctx)
+
+				// Copy the inbound metadata explicitly.
+				outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
+				// Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
+				conn, err := grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+
+				return outCtx, conn, err
+			},
+		}
+	}
+
+	director = func(ctx context.Context, fullMethodName string) ([]proxy.Backend, error) {
 		// Make sure we never forward internal services.
 		if strings.HasPrefix(fullMethodName, "/com.example.internal.") {
-			return nil, nil, status.Errorf(codes.Unimplemented, "Unknown method")
+			return nil, status.Errorf(codes.Unimplemented, "Unknown method")
 		}
 		md, ok := metadata.FromIncomingContext(ctx)
-		// Copy the inbound metadata explicitly.
-		outCtx, _ := context.WithCancel(ctx)
-		outCtx = metadata.NewOutgoingContext(outCtx, md.Copy())
+
 		if ok {
 			// Decide on which backend to dial
 			if val, exists := md[":authority"]; exists && val[0] == "staging.api.example.com" {
-				// Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-				conn, err := grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
-				return outCtx, conn, err
+				return []proxy.Backend{simpleBackendGen("api-service.staging.svc.local")}, nil
 			} else if val, exists := md[":authority"]; exists && val[0] == "api.example.com" {
-				conn, err := grpc.DialContext(ctx, "api-service.prod.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
-				return outCtx, conn, err
+				return []proxy.Backend{simpleBackendGen("api-service.prod.svc.local")}, nil
 			}
 		}
-		return nil, nil, status.Errorf(codes.Unimplemented, "Unknown method")
+		return nil, status.Errorf(codes.Unimplemented, "Unknown method")
 	}
 }
