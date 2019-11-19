@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package mwitkow.testproto;
+package smira.testproto;
 
 message Empty {
 }

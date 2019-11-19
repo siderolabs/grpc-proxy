@@ -24,7 +24,7 @@ func ExampleRegisterService() {
 	server := grpc.NewServer(grpc.CustomCodec(proxy.Codec()))
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
-		"mwitkow.testproto.TestService",
+		"smira.testproto.TestService",
 		"PingEmpty", "Ping", "PingError", "PingList")
 }
 

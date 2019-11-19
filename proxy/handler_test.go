@@ -234,7 +234,7 @@ func (s *ProxyHappySuite) SetupSuite() {
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
-		"mwitkow.testproto.TestService",
+		"smira.testproto.TestService",
 		"Ping")
 
 	// Start the serving loops.
