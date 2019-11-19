@@ -4,9 +4,9 @@
 package proxy
 
 import (
+	"context"
 	"io"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -55,6 +55,18 @@ type handler struct {
 	director StreamDirector
 }
 
+type backendConnection struct {
+	backend Backend
+
+	backendConn *grpc.ClientConn
+	connError   error
+
+	clientStream grpc.ClientStream
+
+	clientCtx    context.Context
+	clientCancel context.CancelFunc
+}
+
 // handler is where the real magic of proxying happens.
 // It is invoked like any gRPC server stream and uses the gRPC server framing to get and receive bytes from the wire,
 // forwarding it to a ClientStream established against the relevant ClientConn.
@@ -64,18 +76,54 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	if !ok {
 		return status.Errorf(codes.Internal, "lowLevelServerStream not exists in context")
 	}
-	// We require that the director's returned context inherits from the serverStream.Context().
-	outgoingCtx, backendConn, err := s.director(serverStream.Context(), fullMethodName)
+
+	backends, err := s.director(serverStream.Context(), fullMethodName)
 	if err != nil {
 		return err
 	}
 
-	clientCtx, clientCancel := context.WithCancel(outgoingCtx)
-	// TODO(mwitkow): Add a `forwarded` header to metadata, https://en.wikipedia.org/wiki/X-Forwarded-For.
-	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
-	if err != nil {
-		return err
+	if len(backends) == 0 {
+		return status.Errorf(codes.Unavailable, "no backend connections for proxying")
 	}
+
+	var establishedConnections int
+	backendConnections := make([]backendConnection, len(backends))
+
+	for i := range backends {
+		backendConnections[i].backend = backends[i]
+
+		//We require that the backend's returned context inherits from the serverStream.Context().
+		var outgoingCtx context.Context
+		outgoingCtx, backendConnections[i].backendConn, backendConnections[i].connError = backends[i].GetConnection(serverStream.Context())
+
+		if backendConnections[i].connError != nil {
+			continue
+		}
+
+		backendConnections[i].clientCtx, backendConnections[i].clientCancel = context.WithCancel(outgoingCtx)
+
+		backendConnections[i].clientStream, backendConnections[i].connError = grpc.NewClientStream(backendConnections[i].clientCtx, clientStreamDescForProxying,
+			backendConnections[i].backendConn, fullMethodName)
+
+		if backendConnections[i].connError != nil {
+			continue
+		}
+
+		establishedConnections++
+	}
+
+	if len(backendConnections) != 1 {
+		return status.Error(codes.Unimplemented, "proxying to multiple backends not implemented yet")
+	}
+
+	// case of proxying one to one:
+	if backendConnections[0].connError != nil {
+		return backendConnections[0].connError
+	}
+
+	clientStream := backendConnections[0].clientStream
+	defer backendConnections[0].clientCancel()
+
 	// Explicitly *do not close* s2cErrChan and c2sErrChan, otherwise the select below will not terminate.
 	// Channels do not have to be closed, it is just a control flow mechanism, see
 	// https://groups.google.com/forum/#!msg/golang-nuts/pZwdYRGxCIk/qpbHxRRPJdUJ
@@ -95,7 +143,6 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 				// however, we may have gotten a receive error (stream disconnected, a read error etc) in which case we need
 				// to cancel the clientStream to the backend, let all of its goroutines be freed up by the CancelFunc and
 				// exit with an error to the stack
-				clientCancel()
 				return status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
 			}
 		case c2sErr := <-c2sErrChan:
