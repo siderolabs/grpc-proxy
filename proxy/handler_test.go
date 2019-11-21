@@ -6,9 +6,7 @@ package proxy_test
 import (
 	"context"
 	"io"
-	"log"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
@@ -200,8 +197,6 @@ func (s *ProxyHappySuite) SetupSuite() {
 	require.NoError(s.T(), err, "must be able to allocate a port for proxyListener")
 	s.serverListener, err = net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(s.T(), err, "must be able to allocate a port for serverListener")
-
-	grpclog.SetLogger(log.New(os.Stderr, "grpc: ", log.LstdFlags)) // nolint: staticcheck
 
 	s.server = grpc.NewServer()
 	pb.RegisterTestServiceServer(s.server, &assertingService{t: s.T()})

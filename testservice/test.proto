@@ -27,3 +27,35 @@ service TestService {
 
 }
 
+message ResponseMetadata {
+  string hostname = 99;
+  string upstream_error = 100;
+}
+
+message ResponseMetadataPrepender {
+  ResponseMetadata metadata = 99;
+}
+
+message MultiPingResponse {
+  ResponseMetadata metadata = 99;
+  string Value = 1;
+  int32 counter = 2;
+  string server = 3;
+}
+
+message MultiPingReply {
+  repeated MultiPingResponse response = 1;
+}
+
+service MultiService {
+  rpc PingEmpty(Empty) returns (MultiPingReply) {}
+
+  rpc Ping(PingRequest) returns (MultiPingReply) {}
+
+  rpc PingError(PingRequest) returns (Empty) {}
+
+  rpc PingList(PingRequest) returns (stream MultiPingReply) {}
+
+  rpc PingStream(stream PingRequest) returns (stream MultiPingReply) {}
+
+}

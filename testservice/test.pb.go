@@ -141,31 +141,234 @@ func (m *PingResponse) GetCounter() int32 {
 	return 0
 }
 
+type ResponseMetadata struct {
+	Hostname             string   `protobuf:"bytes,99,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	UpstreamError        string   `protobuf:"bytes,100,opt,name=upstream_error,json=upstreamError,proto3" json:"upstream_error,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResponseMetadata) Reset()         { *m = ResponseMetadata{} }
+func (m *ResponseMetadata) String() string { return proto.CompactTextString(m) }
+func (*ResponseMetadata) ProtoMessage()    {}
+func (*ResponseMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c161fcfdc0c3ff1e, []int{3}
+}
+
+func (m *ResponseMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseMetadata.Unmarshal(m, b)
+}
+func (m *ResponseMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseMetadata.Marshal(b, m, deterministic)
+}
+func (m *ResponseMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseMetadata.Merge(m, src)
+}
+func (m *ResponseMetadata) XXX_Size() int {
+	return xxx_messageInfo_ResponseMetadata.Size(m)
+}
+func (m *ResponseMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseMetadata proto.InternalMessageInfo
+
+func (m *ResponseMetadata) GetHostname() string {
+	if m != nil {
+		return m.Hostname
+	}
+	return ""
+}
+
+func (m *ResponseMetadata) GetUpstreamError() string {
+	if m != nil {
+		return m.UpstreamError
+	}
+	return ""
+}
+
+type ResponseMetadataPrepender struct {
+	Metadata             *ResponseMetadata `protobuf:"bytes,99,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *ResponseMetadataPrepender) Reset()         { *m = ResponseMetadataPrepender{} }
+func (m *ResponseMetadataPrepender) String() string { return proto.CompactTextString(m) }
+func (*ResponseMetadataPrepender) ProtoMessage()    {}
+func (*ResponseMetadataPrepender) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c161fcfdc0c3ff1e, []int{4}
+}
+
+func (m *ResponseMetadataPrepender) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseMetadataPrepender.Unmarshal(m, b)
+}
+func (m *ResponseMetadataPrepender) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseMetadataPrepender.Marshal(b, m, deterministic)
+}
+func (m *ResponseMetadataPrepender) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseMetadataPrepender.Merge(m, src)
+}
+func (m *ResponseMetadataPrepender) XXX_Size() int {
+	return xxx_messageInfo_ResponseMetadataPrepender.Size(m)
+}
+func (m *ResponseMetadataPrepender) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseMetadataPrepender.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseMetadataPrepender proto.InternalMessageInfo
+
+func (m *ResponseMetadataPrepender) GetMetadata() *ResponseMetadata {
+	if m != nil {
+		return m.Metadata
+	}
+	return nil
+}
+
+type MultiPingResponse struct {
+	Metadata             *ResponseMetadata `protobuf:"bytes,99,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Value                string            `protobuf:"bytes,1,opt,name=Value,proto3" json:"Value,omitempty"`
+	Counter              int32             `protobuf:"varint,2,opt,name=counter,proto3" json:"counter,omitempty"`
+	Server               string            `protobuf:"bytes,3,opt,name=server,proto3" json:"server,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *MultiPingResponse) Reset()         { *m = MultiPingResponse{} }
+func (m *MultiPingResponse) String() string { return proto.CompactTextString(m) }
+func (*MultiPingResponse) ProtoMessage()    {}
+func (*MultiPingResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c161fcfdc0c3ff1e, []int{5}
+}
+
+func (m *MultiPingResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MultiPingResponse.Unmarshal(m, b)
+}
+func (m *MultiPingResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MultiPingResponse.Marshal(b, m, deterministic)
+}
+func (m *MultiPingResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MultiPingResponse.Merge(m, src)
+}
+func (m *MultiPingResponse) XXX_Size() int {
+	return xxx_messageInfo_MultiPingResponse.Size(m)
+}
+func (m *MultiPingResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MultiPingResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MultiPingResponse proto.InternalMessageInfo
+
+func (m *MultiPingResponse) GetMetadata() *ResponseMetadata {
+	if m != nil {
+		return m.Metadata
+	}
+	return nil
+}
+
+func (m *MultiPingResponse) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+func (m *MultiPingResponse) GetCounter() int32 {
+	if m != nil {
+		return m.Counter
+	}
+	return 0
+}
+
+func (m *MultiPingResponse) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+
+type MultiPingReply struct {
+	Response             []*MultiPingResponse `protobuf:"bytes,1,rep,name=response,proto3" json:"response,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
+}
+
+func (m *MultiPingReply) Reset()         { *m = MultiPingReply{} }
+func (m *MultiPingReply) String() string { return proto.CompactTextString(m) }
+func (*MultiPingReply) ProtoMessage()    {}
+func (*MultiPingReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c161fcfdc0c3ff1e, []int{6}
+}
+
+func (m *MultiPingReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MultiPingReply.Unmarshal(m, b)
+}
+func (m *MultiPingReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MultiPingReply.Marshal(b, m, deterministic)
+}
+func (m *MultiPingReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MultiPingReply.Merge(m, src)
+}
+func (m *MultiPingReply) XXX_Size() int {
+	return xxx_messageInfo_MultiPingReply.Size(m)
+}
+func (m *MultiPingReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_MultiPingReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MultiPingReply proto.InternalMessageInfo
+
+func (m *MultiPingReply) GetResponse() []*MultiPingResponse {
+	if m != nil {
+		return m.Response
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Empty)(nil), "smira.testproto.Empty")
 	proto.RegisterType((*PingRequest)(nil), "smira.testproto.PingRequest")
 	proto.RegisterType((*PingResponse)(nil), "smira.testproto.PingResponse")
+	proto.RegisterType((*ResponseMetadata)(nil), "smira.testproto.ResponseMetadata")
+	proto.RegisterType((*ResponseMetadataPrepender)(nil), "smira.testproto.ResponseMetadataPrepender")
+	proto.RegisterType((*MultiPingResponse)(nil), "smira.testproto.MultiPingResponse")
+	proto.RegisterType((*MultiPingReply)(nil), "smira.testproto.MultiPingReply")
 }
 
 func init() { proto.RegisterFile("test.proto", fileDescriptor_c161fcfdc0c3ff1e) }
 
 var fileDescriptor_c161fcfdc0c3ff1e = []byte{
-	// 232 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2a, 0x49, 0x2d, 0x2e,
-	0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2f, 0xce, 0xcd, 0x2c, 0x4a, 0xd4, 0x03, 0x89,
-	0x80, 0x05, 0x94, 0xd8, 0xb9, 0x58, 0x5d, 0x73, 0x0b, 0x4a, 0x2a, 0x95, 0x94, 0xb9, 0xb8, 0x03,
-	0x32, 0xf3, 0xd2, 0x83, 0x52, 0x0b, 0x4b, 0x81, 0x92, 0x42, 0x22, 0x5c, 0xac, 0x65, 0x89, 0x39,
-	0xa5, 0xa9, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0x9c, 0x41, 0x10, 0x8e, 0x92, 0x1d, 0x17, 0x0f, 0x44,
-	0x51, 0x71, 0x41, 0x7e, 0x5e, 0x71, 0x2a, 0x48, 0x55, 0x18, 0xb2, 0x2a, 0x30, 0x47, 0x48, 0x82,
-	0x8b, 0x3d, 0x39, 0xbf, 0x34, 0xaf, 0x24, 0xb5, 0x48, 0x82, 0x09, 0x28, 0xce, 0x1a, 0x04, 0xe3,
-	0x1a, 0xfd, 0x65, 0xe2, 0xe2, 0x0e, 0x01, 0x1a, 0x1f, 0x9c, 0x5a, 0x54, 0x96, 0x99, 0x9c, 0x2a,
-	0xe4, 0xc2, 0xc5, 0x09, 0x32, 0x0f, 0xec, 0x02, 0x21, 0x31, 0x3d, 0x34, 0xc7, 0xe9, 0x81, 0xc5,
-	0xa5, 0x64, 0x31, 0xc4, 0x91, 0xdd, 0xa0, 0xc4, 0x20, 0xe4, 0xca, 0xc5, 0x02, 0x12, 0x11, 0x92,
-	0xc1, 0xa1, 0x10, 0xec, 0x23, 0xc2, 0xc6, 0x38, 0x43, 0x1d, 0x53, 0x54, 0x94, 0x5f, 0x44, 0xc0,
-	0x2c, 0x1c, 0x4e, 0x05, 0x1a, 0xe2, 0xcd, 0xc5, 0x01, 0x52, 0xe8, 0x93, 0x09, 0x0c, 0x43, 0xca,
-	0xdc, 0x63, 0xc0, 0x28, 0xe4, 0xcf, 0xc5, 0x05, 0x12, 0x0b, 0x2e, 0x29, 0x4a, 0x4d, 0xcc, 0xa5,
-	0xd0, 0x38, 0x0d, 0x46, 0x03, 0xc6, 0x24, 0x36, 0xb0, 0x8c, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff,
-	0x0a, 0x9f, 0x1b, 0xb7, 0x13, 0x02, 0x00, 0x00,
+	// 416 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x92, 0xcf, 0x4e, 0xea, 0x40,
+	0x14, 0xc6, 0x6f, 0xe1, 0x02, 0xe5, 0xc0, 0xe5, 0xde, 0x3b, 0x31, 0xa4, 0x12, 0x8d, 0x3a, 0xc6,
+	0x84, 0x55, 0x43, 0x70, 0x2d, 0x1b, 0x45, 0x17, 0x4a, 0xc4, 0xa2, 0x2e, 0xdc, 0x98, 0x0a, 0x13,
+	0x6d, 0x42, 0xff, 0x38, 0x33, 0x25, 0xe1, 0x05, 0x7c, 0x08, 0xdf, 0xd5, 0xc4, 0x99, 0xa1, 0x25,
+	0x48, 0x83, 0x2d, 0xc1, 0xe5, 0xf9, 0xe6, 0x3b, 0xbf, 0x39, 0x33, 0xdf, 0x01, 0xe0, 0x84, 0x71,
+	0x33, 0xa0, 0x3e, 0xf7, 0xd1, 0x5f, 0xe6, 0x3a, 0xd4, 0x36, 0xa5, 0xa2, 0x04, 0x5c, 0x82, 0x42,
+	0xd7, 0x0d, 0xf8, 0x14, 0x1f, 0x42, 0xa5, 0xef, 0x78, 0xcf, 0x16, 0x79, 0x0d, 0xc5, 0x21, 0xda,
+	0x82, 0xc2, 0xc4, 0x1e, 0x87, 0xc4, 0xd0, 0xf6, 0xb5, 0x66, 0xd9, 0x9a, 0x15, 0xb8, 0x03, 0xd5,
+	0x99, 0x89, 0x05, 0xbe, 0xc7, 0x88, 0x74, 0xdd, 0x2f, 0xba, 0x54, 0x81, 0x0c, 0x28, 0x0d, 0xfd,
+	0xd0, 0xe3, 0x84, 0x1a, 0x39, 0xa1, 0x17, 0xac, 0xb8, 0xc4, 0x77, 0xf0, 0x2f, 0xee, 0xed, 0x11,
+	0x6e, 0x8f, 0x6c, 0x6e, 0xa3, 0x06, 0xe8, 0x2f, 0x3e, 0xe3, 0x9e, 0xed, 0x12, 0x63, 0xa8, 0x30,
+	0xf3, 0x1a, 0x1d, 0x41, 0x2d, 0x0c, 0x18, 0xa7, 0xc4, 0x76, 0x1f, 0x09, 0xa5, 0x3e, 0x35, 0x46,
+	0xca, 0xf1, 0x27, 0x56, 0xbb, 0x52, 0xc4, 0x0f, 0xb0, 0xbd, 0x8c, 0xed, 0x53, 0x12, 0x10, 0x6f,
+	0x44, 0x28, 0x3a, 0x01, 0xdd, 0x8d, 0x44, 0xc5, 0xaf, 0xb4, 0x0f, 0xcc, 0xa5, 0x5f, 0x30, 0x97,
+	0xbb, 0xad, 0x79, 0x0b, 0x7e, 0xd7, 0xe0, 0x7f, 0x2f, 0x1c, 0x73, 0xe7, 0xcb, 0xc3, 0x37, 0x83,
+	0xae, 0xfb, 0x6f, 0xa8, 0x0e, 0x45, 0x46, 0xe8, 0x44, 0x1c, 0xe4, 0x55, 0x43, 0x54, 0xe1, 0x3e,
+	0xd4, 0x16, 0x66, 0x0b, 0xc6, 0x53, 0xd4, 0x01, 0x9d, 0x46, 0xf7, 0x0a, 0x78, 0x5e, 0x0c, 0x86,
+	0x13, 0x83, 0x25, 0x9e, 0x63, 0xcd, 0x7b, 0xda, 0x1f, 0x39, 0xa8, 0xdc, 0x0a, 0xe7, 0x40, 0x5c,
+	0xe0, 0x0c, 0x09, 0x3a, 0x83, 0xb2, 0x74, 0xaa, 0x1d, 0x41, 0xf5, 0x04, 0x4a, 0xe9, 0x8d, 0xdd,
+	0x84, 0xbe, 0x48, 0xc7, 0xbf, 0x50, 0x17, 0x7e, 0x4b, 0x05, 0xed, 0xac, 0x30, 0xaa, 0x9d, 0x4b,
+	0xc7, 0x9c, 0x46, 0xc3, 0xc8, 0xd0, 0x53, 0x58, 0x2b, 0x46, 0x15, 0x90, 0x4b, 0xd0, 0xa5, 0xf1,
+	0xca, 0x11, 0x5b, 0xbe, 0xd9, 0x3c, 0x2d, 0x0d, 0x5d, 0x03, 0x48, 0x6d, 0xa0, 0x96, 0x71, 0x43,
+	0x5c, 0x53, 0x6b, 0x69, 0xed, 0xb7, 0x3c, 0x54, 0x55, 0x3e, 0x71, 0x00, 0xe7, 0x59, 0x02, 0xd8,
+	0xfb, 0x2e, 0x63, 0xb1, 0x16, 0xe2, 0xd9, 0x17, 0x99, 0x22, 0xc8, 0x00, 0xfa, 0x91, 0x10, 0x7a,
+	0x99, 0x43, 0x48, 0x9f, 0x48, 0xc4, 0x70, 0xb3, 0x46, 0x0c, 0xe9, 0x40, 0x19, 0xc4, 0x53, 0x51,
+	0x9d, 0x1d, 0x7f, 0x06, 0x00, 0x00, 0xff, 0xff, 0x6a, 0xdd, 0xde, 0x4d, 0x3e, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -445,6 +648,282 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "PingStream",
 			Handler:       _TestService_PingStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "test.proto",
+}
+
+// MultiServiceClient is the client API for MultiService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type MultiServiceClient interface {
+	PingEmpty(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MultiPingReply, error)
+	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*MultiPingReply, error)
+	PingError(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*Empty, error)
+	PingList(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (MultiService_PingListClient, error)
+	PingStream(ctx context.Context, opts ...grpc.CallOption) (MultiService_PingStreamClient, error)
+}
+
+type multiServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewMultiServiceClient(cc *grpc.ClientConn) MultiServiceClient {
+	return &multiServiceClient{cc}
+}
+
+func (c *multiServiceClient) PingEmpty(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*MultiPingReply, error) {
+	out := new(MultiPingReply)
+	err := c.cc.Invoke(ctx, "/smira.testproto.MultiService/PingEmpty", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *multiServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*MultiPingReply, error) {
+	out := new(MultiPingReply)
+	err := c.cc.Invoke(ctx, "/smira.testproto.MultiService/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *multiServiceClient) PingError(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/smira.testproto.MultiService/PingError", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *multiServiceClient) PingList(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (MultiService_PingListClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_MultiService_serviceDesc.Streams[0], "/smira.testproto.MultiService/PingList", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &multiServicePingListClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type MultiService_PingListClient interface {
+	Recv() (*MultiPingReply, error)
+	grpc.ClientStream
+}
+
+type multiServicePingListClient struct {
+	grpc.ClientStream
+}
+
+func (x *multiServicePingListClient) Recv() (*MultiPingReply, error) {
+	m := new(MultiPingReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *multiServiceClient) PingStream(ctx context.Context, opts ...grpc.CallOption) (MultiService_PingStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_MultiService_serviceDesc.Streams[1], "/smira.testproto.MultiService/PingStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &multiServicePingStreamClient{stream}
+	return x, nil
+}
+
+type MultiService_PingStreamClient interface {
+	Send(*PingRequest) error
+	Recv() (*MultiPingReply, error)
+	grpc.ClientStream
+}
+
+type multiServicePingStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *multiServicePingStreamClient) Send(m *PingRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *multiServicePingStreamClient) Recv() (*MultiPingReply, error) {
+	m := new(MultiPingReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// MultiServiceServer is the server API for MultiService service.
+type MultiServiceServer interface {
+	PingEmpty(context.Context, *Empty) (*MultiPingReply, error)
+	Ping(context.Context, *PingRequest) (*MultiPingReply, error)
+	PingError(context.Context, *PingRequest) (*Empty, error)
+	PingList(*PingRequest, MultiService_PingListServer) error
+	PingStream(MultiService_PingStreamServer) error
+}
+
+// UnimplementedMultiServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedMultiServiceServer struct {
+}
+
+func (*UnimplementedMultiServiceServer) PingEmpty(ctx context.Context, req *Empty) (*MultiPingReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PingEmpty not implemented")
+}
+func (*UnimplementedMultiServiceServer) Ping(ctx context.Context, req *PingRequest) (*MultiPingReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (*UnimplementedMultiServiceServer) PingError(ctx context.Context, req *PingRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PingError not implemented")
+}
+func (*UnimplementedMultiServiceServer) PingList(req *PingRequest, srv MultiService_PingListServer) error {
+	return status.Errorf(codes.Unimplemented, "method PingList not implemented")
+}
+func (*UnimplementedMultiServiceServer) PingStream(srv MultiService_PingStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method PingStream not implemented")
+}
+
+func RegisterMultiServiceServer(s *grpc.Server, srv MultiServiceServer) {
+	s.RegisterService(&_MultiService_serviceDesc, srv)
+}
+
+func _MultiService_PingEmpty_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MultiServiceServer).PingEmpty(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smira.testproto.MultiService/PingEmpty",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MultiServiceServer).PingEmpty(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MultiService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MultiServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smira.testproto.MultiService/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MultiServiceServer).Ping(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MultiService_PingError_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MultiServiceServer).PingError(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smira.testproto.MultiService/PingError",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MultiServiceServer).PingError(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MultiService_PingList_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(PingRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MultiServiceServer).PingList(m, &multiServicePingListServer{stream})
+}
+
+type MultiService_PingListServer interface {
+	Send(*MultiPingReply) error
+	grpc.ServerStream
+}
+
+type multiServicePingListServer struct {
+	grpc.ServerStream
+}
+
+func (x *multiServicePingListServer) Send(m *MultiPingReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _MultiService_PingStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MultiServiceServer).PingStream(&multiServicePingStreamServer{stream})
+}
+
+type MultiService_PingStreamServer interface {
+	Send(*MultiPingReply) error
+	Recv() (*PingRequest, error)
+	grpc.ServerStream
+}
+
+type multiServicePingStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *multiServicePingStreamServer) Send(m *MultiPingReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *multiServicePingStreamServer) Recv() (*PingRequest, error) {
+	m := new(PingRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+var _MultiService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "smira.testproto.MultiService",
+	HandlerType: (*MultiServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PingEmpty",
+			Handler:    _MultiService_PingEmpty_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _MultiService_Ping_Handler,
+		},
+		{
+			MethodName: "PingError",
+			Handler:    _MultiService_PingError_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "PingList",
+			Handler:       _MultiService_PingList_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "PingStream",
+			Handler:       _MultiService_PingStream_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
