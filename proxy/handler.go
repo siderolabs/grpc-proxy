@@ -1,4 +1,5 @@
 // Copyright 2017 Michal Witkowski. All Rights Reserved.
+// Copyright 2019 Andrey Smirnov. All Rights Reserved.
 // See LICENSE for licensing terms.
 
 package proxy
@@ -111,7 +112,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	}
 
 	if len(backendConnections) != 1 {
-		return status.Error(codes.Unimplemented, "proxying to multiple backends not implemented yet")
+		return s.handlerMulti(serverStream, backendConnections)
 	}
 
 	// case of proxying one to one:
