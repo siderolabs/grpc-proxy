@@ -25,7 +25,8 @@ func ExampleRegisterService() {
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
 		"smira.testproto.TestService",
-		"PingEmpty", "Ping", "PingError", "PingList")
+		[]string{"PingEmpty", "Ping", "PingError", "PingList"},
+		[]string{"PingList"})
 }
 
 func ExampleTransparentHandler() {
