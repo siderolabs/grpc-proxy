@@ -24,8 +24,18 @@ var (
 // The behaviour is the same as if you were registering a handler method, e.g. from a codegenerated pb.go file.
 //
 // This can *only* be used if the `server` also uses grpcproxy.CodecForServer() ServerOption.
-func RegisterService(server *grpc.Server, director StreamDirector, serviceName string, methodNames ...string) {
-	streamer := &handler{director}
+//
+// streamedMethodNames is only important for one-2-many proxying.
+func RegisterService(server *grpc.Server, director StreamDirector, serviceName string, methodNames []string, streamedMethodNames []string) {
+	streamer := &handler{
+		director:        director,
+		streamedMethods: map[string]struct{}{},
+	}
+
+	for _, methodName := range streamedMethodNames {
+		streamer.streamedMethods["/"+serviceName+"/"+methodName] = struct{}{}
+	}
+
 	fakeDesc := &grpc.ServiceDesc{
 		ServiceName: serviceName,
 		HandlerType: (*interface{})(nil),
@@ -48,12 +58,16 @@ func RegisterService(server *grpc.Server, director StreamDirector, serviceName s
 //
 // This can *only* be used if the `server` also uses grpcproxy.CodecForServer() ServerOption.
 func TransparentHandler(director StreamDirector) grpc.StreamHandler {
-	streamer := &handler{director}
+	streamer := &handler{
+		director:        director,
+		streamedMethods: map[string]struct{}{},
+	}
 	return streamer.handler
 }
 
 type handler struct {
-	director StreamDirector
+	director        StreamDirector
+	streamedMethods map[string]struct{}
 }
 
 type backendConnection struct {
@@ -112,7 +126,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	}
 
 	if len(backendConnections) != 1 {
-		return s.handlerMulti(serverStream, backendConnections)
+		return s.handlerMulti(fullMethodName, serverStream, backendConnections)
 	}
 
 	// case of proxying one to one:

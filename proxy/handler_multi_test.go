@@ -267,6 +267,48 @@ func (s *MultiServiceSuite) TestDirectorErrorIsPropagated() {
 	assert.Equal(s.T(), "testing rejection", status.Convert(err).Message())
 }
 
+func (s *MultiServiceSuite) TestPingStream_FullDuplexWorks() {
+	stream, err := s.testClient.PingStream(s.ctx)
+	require.NoError(s.T(), err, "PingStream request should be successful.")
+
+	for i := 0; i < countListResponses; i++ {
+		ping := &pb.PingRequest{Value: fmt.Sprintf("foo:%d", i)}
+		require.NoError(s.T(), stream.Send(ping), "sending to PingStream must not fail")
+
+		expectedUpstreams := map[string]struct{}{}
+		for j := 0; j < numUpstreams; j++ {
+			expectedUpstreams[fmt.Sprintf("server%d", j)] = struct{}{}
+		}
+
+		// each upstream should send back response
+		for j := 0; j < numUpstreams; j++ {
+			resp, err := stream.Recv()
+			s.Require().NoError(err)
+
+			s.Assert().Len(resp.Response, 1)
+			s.Assert().EqualValues(i, resp.Response[0].Counter, "ping roundtrip must succeed with the correct id")
+			s.Assert().EqualValues(resp.Response[0].Metadata.Hostname, resp.Response[0].Server)
+
+			delete(expectedUpstreams, resp.Response[0].Metadata.Hostname)
+		}
+
+		s.Require().Empty(expectedUpstreams)
+
+		if i == 0 {
+			// Check that the header arrives before all entries.
+			headerMd, err := stream.Header()
+			require.NoError(s.T(), err, "PingStream headers should not error.")
+			assert.Contains(s.T(), headerMd, serverHeaderMdKey, "PingStream response headers user contain metadata")
+		}
+	}
+	require.NoError(s.T(), stream.CloseSend(), "no error on close send")
+	_, err = stream.Recv()
+	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
+	// Check that the trailer headers are here.
+	trailerMd := stream.Trailer()
+	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
+}
+
 func (s *MultiServiceSuite) SetupTest() {
 	s.ctx, s.ctxCancel = context.WithTimeout(context.TODO(), 120*time.Second)
 }
@@ -352,7 +394,8 @@ func (s *MultiServiceSuite) SetupSuite() {
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"smira.testproto.MultiService",
-		"Ping")
+		[]string{"Ping", "PingStream"},
+		[]string{"PingStream"})
 
 	// Start the serving loops.
 	for i := range s.servers {

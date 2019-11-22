@@ -230,7 +230,8 @@ func (s *ProxyHappySuite) SetupSuite() {
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"smira.testproto.TestService",
-		"Ping")
+		[]string{"Ping"},
+		nil)
 
 	// Start the serving loops.
 	s.T().Logf("starting grpc.Server at: %v", s.serverListener.Addr().String())
