@@ -73,7 +73,7 @@ func (s *assertingMultiService) Ping(ctx context.Context, ping *pb.PingRequest) 
 	}, nil
 }
 
-func (s *assertingMultiService) PingError(ctx context.Context, ping *pb.PingRequest) (*pb.Empty, error) {
+func (s *assertingMultiService) PingError(ctx context.Context, ping *pb.PingRequest) (*pb.EmptyReply, error) {
 	return nil, status.Errorf(codes.FailedPrecondition, "Userspace error.")
 }
 
@@ -168,10 +168,14 @@ func (b *assertingBackend) AppendInfo(resp []byte) ([]byte, error) {
 }
 
 func (b *assertingBackend) BuildError(err error) ([]byte, error) {
-	return proto.Marshal(&pb.ResponseMetadataPrepender{
-		Metadata: &pb.ResponseMetadata{
-			Hostname:      fmt.Sprintf("server%d", b.i),
-			UpstreamError: err.Error(),
+	return proto.Marshal(&pb.EmptyReply{
+		Response: []*pb.EmptyResponse{
+			{
+				Metadata: &pb.ResponseMetadata{
+					Hostname:      fmt.Sprintf("server%d", b.i),
+					UpstreamError: err.Error(),
+				},
+			},
 		},
 	})
 }
@@ -214,6 +218,53 @@ func (s *MultiServiceSuite) TestPingEmptyCarriesClientMetadata() {
 	}
 
 	s.Require().Empty(expectedUpstreams)
+}
+
+func (s *MultiServiceSuite) TestPingEmpty_StressTest() {
+	for i := 0; i < 50; i++ {
+		s.TestPingEmptyCarriesClientMetadata()
+	}
+}
+
+func (s *MultiServiceSuite) TestPingCarriesServerHeadersAndTrailers() {
+	headerMd := make(metadata.MD)
+	trailerMd := make(metadata.MD)
+	// This is an awkward calling convention... but meh.
+	out, err := s.testClient.Ping(s.ctx, &pb.PingRequest{Value: "foo"}, grpc.Header(&headerMd), grpc.Trailer(&trailerMd))
+	require.NoError(s.T(), err, "Ping should succeed without errors")
+
+	s.Require().Len(out.Response, numUpstreams)
+	for _, resp := range out.Response {
+		s.Require().Equal("foo", resp.Value)
+		s.Require().EqualValues(42, resp.Counter)
+
+		// equal metadata set by proxy and server
+		s.Require().Equal(resp.Metadata.Hostname, resp.Server)
+	}
+
+	assert.Contains(s.T(), headerMd, serverHeaderMdKey, "server response headers must contain server data")
+	assert.Len(s.T(), trailerMd, 1, "server response trailers must contain server data")
+}
+
+func (s *MultiServiceSuite) TestPingErrorPropagatesAppError() {
+	out, err := s.testClient.PingError(s.ctx, &pb.PingRequest{Value: "foo"})
+	s.Require().NoError(err, "error should be encapsulated in the response")
+
+	s.Require().Len(out.Response, numUpstreams)
+	for _, resp := range out.Response {
+		s.Require().NotEmpty(resp.Metadata.UpstreamError)
+		s.Require().NotEmpty(resp.Metadata.Hostname)
+		s.Assert().Equal("rpc error: code = FailedPrecondition desc = Userspace error.", resp.Metadata.UpstreamError)
+	}
+}
+
+func (s *MultiServiceSuite) TestDirectorErrorIsPropagated() {
+	// See SetupSuite where the StreamDirector has a special case.
+	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(rejectingMdKey, "true"))
+	_, err := s.testClient.Ping(ctx, &pb.PingRequest{Value: "foo"})
+	require.Error(s.T(), err, "Director should reject this RPC")
+	assert.Equal(s.T(), codes.PermissionDenied, status.Code(err))
+	assert.Equal(s.T(), "testing rejection", status.Convert(err).Message())
 }
 
 func (s *MultiServiceSuite) SetupTest() {

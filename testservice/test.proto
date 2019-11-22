@@ -47,12 +47,20 @@ message MultiPingReply {
   repeated MultiPingResponse response = 1;
 }
 
+message EmptyReply {
+  repeated EmptyResponse response = 1;
+}
+
+message EmptyResponse {
+  ResponseMetadata metadata = 99;
+}
+
 service MultiService {
   rpc PingEmpty(Empty) returns (MultiPingReply) {}
 
   rpc Ping(PingRequest) returns (MultiPingReply) {}
 
-  rpc PingError(PingRequest) returns (Empty) {}
+  rpc PingError(PingRequest) returns (EmptyReply) {}
 
   rpc PingList(PingRequest) returns (stream MultiPingReply) {}
 
