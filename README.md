@@ -6,6 +6,9 @@
 
 [gRPC Go](https://github.com/grpc/grpc-go) Proxy server
 
+This is a fork of awesome [mwitkow/grpc-proxy](https://github.com/mwitkow/grpc-proxy) with support
+for one to many proxying added.
+
 ## Project Goal
 
 Build a transparent reverse proxy for gRPC targets that will make it easy to expose gRPC services
@@ -14,29 +17,52 @@ over the internet. This includes:
  * easy, declarative definition of backends and their mappings to frontends
  * simple round-robin load balancing of inbound requests from a single connection to multiple backends
 
-The project now exists as a **proof of concept**, with the key piece being the `proxy` package that
-is a generic gRPC reverse proxy handler.
+## Proxying Modes
+
+There are two proxying modes supported:
+
+* one to one: in this mode data passed back and forth is transmitted as is without any modifications;
+* one to many: one client connection is mapped into multiple upstream connections, results might be aggregated
+(for unary calls), errors translated into response messages; this mode requires special layout of protobuf messages.
 
 ## Proxy Handler
 
 The package [`proxy`](proxy/) contains a generic gRPC reverse proxy handler that allows a gRPC server to
-not know about registered handlers or their data types. Please consult the docs, here's an exaple usage.
+not know about registered handlers or their data types. Please consult the docs, here's an example usage.
+
+First, define `Backend` implementation to identify specific upstream. For one to one proxying, `SingleBackend`
+might be used:
+
+```go
+backend := &proxy.SingleBackend{
+    GetConn: func(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
+        md, _ := metadata.FromIncomingContext(ctx)
+
+        // Copy the inbound metadata explicitly.
+        outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
+        // Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
+        conn, err := grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+
+        return outCtx, conn, err
+    },
+}
+```
 
 Defining a `StreamDirector` that decides where (if at all) to send the request
 ```go
-director = func(ctx context.Context, fullMethodName string) (*grpc.ClientConn, error) {
+director = func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
     // Make sure we never forward internal services.
     if strings.HasPrefix(fullMethodName, "/com.example.internal.") {
-        return nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
+        return nil, nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
     }
     md, ok := metadata.FromContext(ctx)
     if ok {
         // Decide on which backend to dial
         if val, exists := md[":authority"]; exists && val[0] == "staging.api.example.com" {
             // Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-            return grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec()))
+            return ctx, backend1, nil
         } else if val, exists := md[":authority"]; exists && val[0] == "api.example.com" {
-            return grpc.DialContext(ctx, "api-service.prod.svc.local", grpc.WithCodec(proxy.Codec()))
+            return ctx, backend2, nil
         }
     }
     return nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
@@ -51,6 +77,18 @@ server := grpc.NewServer(
     grpc.UnknownServiceHandler(proxy.TransparentHandler(director)))
 pb_test.RegisterTestServiceServer(server, &testImpl{})
 ```
+
+## One to Many Proxying
+
+In one to many proxying mode, it's critical to identify source of each message proxied back from the upstreams.
+Also upstream error shouldn't fail whole request and instead return errors as messages back. In order to achieve
+this goal, protobuf response message should follow the same structure:
+
+1. Every response should be `repeated` list of response messages, so that responses from multiple upstreams might be
+concatenated to build combined response from all the upstreams.
+
+2. Response should contain common metadata fields which allow grpc-proxy to inject source information and error information
+into response.
 
 ## License
 

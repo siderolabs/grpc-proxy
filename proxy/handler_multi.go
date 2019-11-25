@@ -208,7 +208,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 							dst.SetTrailer(src.clientStream.Trailer())
 							return nil
 						}
-						return s.sendError(src, dst, fmt.Errorf("error reading from client stream %s: %w", src.backend, err))
+						return s.sendError(src, dst, err)
 					}
 					if j == 0 {
 						// This is a bit of a hack, but client to server headers are only readable after first client msg is
@@ -216,7 +216,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 						// This is the only place to do it nicely.
 						md, err := src.clientStream.Header()
 						if err != nil {
-							return s.sendError(src, dst, fmt.Errorf("error getting headers from client stream %s: %w", src.backend, err))
+							return s.sendError(src, dst, err)
 						}
 						if err := dst.SetHeader(md); err != nil {
 							return fmt.Errorf("error setting headers from client %s: %w", src.backend, err)
@@ -261,17 +261,23 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 				return
 			}
 
-			liveDestinations := 0
-			for i := range destinations {
-				if destinations[i].clientStream == nil || destinations[i].connError != nil {
-					continue
-				}
+			errCh := make(chan error)
 
-				if err := destinations[i].clientStream.SendMsg(f); err != nil {
-					// TODO: race with reading connError (?)
-					// skip this or keep using?
-					destinations[i].connError = err
-				} else {
+			for i := range destinations {
+				go func(dst *backendConnection) {
+					errCh <- func() error {
+						if dst.clientStream == nil || dst.connError != nil {
+							return nil // skip it
+						}
+
+						return dst.clientStream.SendMsg(f)
+					}()
+				}(&destinations[i])
+			}
+
+			liveDestinations := 0
+			for range destinations {
+				if err := <-errCh; err == nil {
 					liveDestinations++
 				}
 			}

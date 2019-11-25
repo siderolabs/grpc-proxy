@@ -66,4 +66,5 @@ service MultiService {
 
   rpc PingStream(stream PingRequest) returns (stream MultiPingReply) {}
 
+  rpc PingStreamError(stream PingRequest) returns (stream MultiPingReply) {}
 }
