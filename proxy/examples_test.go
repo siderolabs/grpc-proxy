@@ -46,7 +46,7 @@ func ExampleStreamDirector() {
 				// Copy the inbound metadata explicitly.
 				outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
 				// Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-				conn, err := grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+				conn, err := grpc.DialContext(ctx, hostname, grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
 
 				return outCtx, conn, err
 			},

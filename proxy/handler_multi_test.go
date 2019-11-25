@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ import (
 )
 
 const (
-	numUpstreams = 3
+	numUpstreams = 5
 )
 
 // asserting service is implemented on the server side and serves as a handler for stuff
@@ -124,9 +125,16 @@ func (s *assertingMultiService) PingStream(stream pb.MultiService_PingStreamServ
 	return nil
 }
 
+func (s *assertingMultiService) PingStreamError(stream pb.MultiService_PingStreamErrorServer) error {
+	return status.Errorf(codes.FailedPrecondition, "Userspace error.")
+}
+
 type assertingBackend struct {
 	addr string
 	i    int
+
+	mu   sync.Mutex
+	conn *grpc.ClientConn
 }
 
 func (b *assertingBackend) String() string {
@@ -138,9 +146,20 @@ func (b *assertingBackend) GetConnection(ctx context.Context) (context.Context, 
 	// Explicitly copy the metadata, otherwise the tests will fail.
 	outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
 
-	conn, err := grpc.DialContext(ctx, b.addr, grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+	if b.addr == "fail" {
+		return ctx, nil, status.Error(codes.Unavailable, "backend connection failed")
+	}
 
-	return outCtx, conn, err
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.conn != nil {
+		return outCtx, b.conn, nil
+	}
+
+	var err error
+	b.conn, err = grpc.DialContext(ctx, b.addr, grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+
+	return outCtx, b.conn, err
 }
 
 func (b *assertingBackend) AppendInfo(resp []byte) ([]byte, error) {
@@ -226,6 +245,70 @@ func (s *MultiServiceSuite) TestPingEmpty_StressTest() {
 	}
 }
 
+func (s *MultiServiceSuite) TestPingEmptyTargets() {
+	for _, targets := range [][]string{
+		{"1", "2"},
+		{"3", "2", "1"},
+		{"0", "4"},
+	} {
+		md := metadata.Pairs(clientMdKey, "true")
+		md.Set("targets", targets...)
+
+		ctx := metadata.NewOutgoingContext(s.ctx, md)
+		out, err := s.testClient.PingEmpty(ctx, &pb.Empty{})
+		require.NoError(s.T(), err, "PingEmpty should succeed without errors")
+
+		expectedUpstreams := map[string]struct{}{}
+		for _, target := range targets {
+			expectedUpstreams[fmt.Sprintf("server%s", target)] = struct{}{}
+		}
+
+		s.Require().Len(out.Response, len(expectedUpstreams))
+		for _, resp := range out.Response {
+			s.Require().Equal(pingDefaultValue, resp.Value)
+			s.Require().EqualValues(42, resp.Counter)
+
+			// equal metadata set by proxy and server
+			s.Require().Equal(resp.Metadata.Hostname, resp.Server)
+
+			delete(expectedUpstreams, resp.Metadata.Hostname)
+		}
+
+		s.Require().Empty(expectedUpstreams)
+	}
+}
+func (s *MultiServiceSuite) TestPingEmptyConnError() {
+	targets := []string{"0", "-1", "2"}
+	md := metadata.Pairs(clientMdKey, "true")
+	md.Set("targets", targets...)
+
+	ctx := metadata.NewOutgoingContext(s.ctx, md)
+	out, err := s.testClient.PingEmpty(ctx, &pb.Empty{})
+	require.NoError(s.T(), err, "PingEmpty should succeed without errors")
+
+	expectedUpstreams := map[string]struct{}{}
+	for _, target := range targets {
+		expectedUpstreams[fmt.Sprintf("server%s", target)] = struct{}{}
+	}
+
+	s.Require().Len(out.Response, len(expectedUpstreams))
+	for _, resp := range out.Response {
+		delete(expectedUpstreams, resp.Metadata.Hostname)
+
+		if resp.Metadata.Hostname != "server-1" {
+			s.Assert().Equal(pingDefaultValue, resp.Value)
+			s.Assert().EqualValues(42, resp.Counter)
+
+			// equal metadata set by proxy and server
+			s.Assert().Equal(resp.Metadata.Hostname, resp.Server)
+		} else {
+			s.Assert().Equal("rpc error: code = Unavailable desc = backend connection failed", resp.Metadata.UpstreamError)
+		}
+	}
+
+	s.Require().Empty(expectedUpstreams)
+}
+
 func (s *MultiServiceSuite) TestPingCarriesServerHeadersAndTrailers() {
 	headerMd := make(metadata.MD)
 	trailerMd := make(metadata.MD)
@@ -256,6 +339,44 @@ func (s *MultiServiceSuite) TestPingErrorPropagatesAppError() {
 		s.Require().NotEmpty(resp.Metadata.Hostname)
 		s.Assert().Equal("rpc error: code = FailedPrecondition desc = Userspace error.", resp.Metadata.UpstreamError)
 	}
+}
+
+func (s *MultiServiceSuite) TestPingStreamErrorPropagatesAppError() {
+	stream, err := s.testClient.PingStreamError(s.ctx)
+	s.Require().NoError(err, "error should be encapsulated in the response")
+
+	for j := 0; j < numUpstreams; j++ {
+		resp, err := stream.Recv()
+		s.Require().NoError(err)
+
+		s.Assert().Len(resp.Response, 1)
+		s.Assert().Equal("rpc error: code = FailedPrecondition desc = Userspace error.", resp.Response[0].Metadata.UpstreamError)
+	}
+
+	require.NoError(s.T(), stream.CloseSend(), "no error on close send")
+	_, err = stream.Recv()
+	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
+}
+
+func (s *MultiServiceSuite) TestPingStreamConnError() {
+	targets := []string{"0", "-1", "2"}
+	md := metadata.Pairs(clientMdKey, "true")
+	md.Set("targets", targets...)
+
+	ctx := metadata.NewOutgoingContext(s.ctx, md)
+	stream, err := s.testClient.PingStream(ctx)
+	s.Require().NoError(err, "error should be encapsulated in the response")
+
+	require.NoError(s.T(), stream.CloseSend(), "no error on close send")
+
+	resp, err := stream.Recv()
+	s.Require().NoError(err)
+
+	s.Assert().Len(resp.Response, 1)
+	s.Assert().Equal("rpc error: code = Unavailable desc = backend connection failed", resp.Response[0].Metadata.UpstreamError)
+
+	_, err = stream.Recv()
+	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
 }
 
 func (s *MultiServiceSuite) TestDirectorErrorIsPropagated() {
@@ -309,6 +430,79 @@ func (s *MultiServiceSuite) TestPingStream_FullDuplexWorks() {
 	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
 }
 
+func (s *MultiServiceSuite) TestPingStream_FullDuplexConcurrent() {
+	stream, err := s.testClient.PingStream(s.ctx)
+	require.NoError(s.T(), err, "PingStream request should be successful.")
+
+	// send countListResponses requests and concurrently read numUpstreams * countListResponses replies
+	errCh := make(chan error, 2)
+
+	expectedUpstreams := map[string]int32{}
+	for j := 0; j < numUpstreams; j++ {
+		expectedUpstreams[fmt.Sprintf("server%d", j)] = 0
+	}
+
+	go func() {
+		errCh <- func() error {
+			for i := 0; i < countListResponses; i++ {
+				ping := &pb.PingRequest{Value: fmt.Sprintf("foo:%d", i)}
+				if err := stream.Send(ping); err != nil {
+					return err
+				}
+			}
+
+			return stream.CloseSend()
+		}()
+	}()
+
+	go func() {
+		errCh <- func() error {
+			for i := 0; i < countListResponses*numUpstreams; i++ {
+				resp, err := stream.Recv()
+				if err != nil {
+					return err
+				}
+
+				if len(resp.Response) != 1 {
+					return fmt.Errorf("single response expected: %d", len(resp.Response))
+				}
+
+				if resp.Response[0].Metadata.Hostname != resp.Response[0].Server {
+					return fmt.Errorf("mismatch on host metadata: %v != %v", resp.Response[0].Metadata.Hostname, resp.Response[0].Server)
+				}
+
+				expectedCounter, ok := expectedUpstreams[resp.Response[0].Server]
+				if !ok {
+					return fmt.Errorf("unexpected host: %v", resp.Response[0].Server)
+				}
+
+				if expectedCounter != resp.Response[0].Counter {
+					return fmt.Errorf("unexpected counter value: %d != %d", expectedCounter, resp.Response[0].Counter)
+				}
+
+				expectedUpstreams[resp.Response[0].Server]++
+			}
+
+			return nil
+		}()
+	}()
+
+	s.Require().NoError(<-errCh)
+	s.Require().NoError(<-errCh)
+
+	_, err = stream.Recv()
+	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
+	// Check that the trailer headers are here.
+	trailerMd := stream.Trailer()
+	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
+}
+
+func (s *MultiServiceSuite) TestPingStream_StressTest() {
+	for i := 0; i < 50; i++ {
+		s.TestPingStream_FullDuplexWorks()
+	}
+}
+
 func (s *MultiServiceSuite) SetupTest() {
 	s.ctx, s.ctxCancel = context.WithTimeout(context.TODO(), 120*time.Second)
 }
@@ -350,6 +544,11 @@ func (s *MultiServiceSuite) SetupSuite() {
 		}
 	}
 
+	failingBackend := &assertingBackend{
+		i:    -1,
+		addr: "fail",
+	}
+
 	// Setup of the proxy's Director.
 	director := func(ctx context.Context, fullName string) ([]proxy.Backend, error) {
 		var targets []int
@@ -381,7 +580,11 @@ func (s *MultiServiceSuite) SetupSuite() {
 		}
 
 		for _, t := range targets {
-			result = append(result, backends[t])
+			if t == -1 {
+				result = append(result, failingBackend)
+			} else {
+				result = append(result, backends[t])
+			}
 		}
 
 		return result, nil
@@ -394,8 +597,8 @@ func (s *MultiServiceSuite) SetupSuite() {
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"smira.testproto.MultiService",
-		[]string{"Ping", "PingStream"},
-		[]string{"PingStream"})
+		[]string{"Ping", "PingStream", "PingStreamError"},
+		[]string{"PingStream", "PingStreamError"})
 
 	// Start the serving loops.
 	for i := range s.servers {
