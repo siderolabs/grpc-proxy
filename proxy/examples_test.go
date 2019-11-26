@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/smira/grpc-proxy/proxy"
+	"github.com/talos-systems/grpc-proxy/proxy"
 )
 
 var (
@@ -24,7 +24,7 @@ func ExampleRegisterService() {
 	server := grpc.NewServer(grpc.CustomCodec(proxy.Codec()))
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
-		"smira.testproto.TestService",
+		"talos.testproto.TestService",
 		[]string{"PingEmpty", "Ping", "PingError", "PingList"},
 		[]string{"PingList"})
 }

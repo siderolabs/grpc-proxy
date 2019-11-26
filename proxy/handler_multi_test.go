@@ -28,8 +28,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/smira/grpc-proxy/proxy"
-	pb "github.com/smira/grpc-proxy/testservice"
+	pb "github.com/talos-systems/grpc-proxy/testservice"
+	"github.com/talos-systems/grpc-proxy/proxy"
 )
 
 const (
@@ -596,7 +596,7 @@ func (s *MultiServiceSuite) SetupSuite() {
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
-		"smira.testproto.MultiService",
+		"talos.testproto.MultiService",
 		[]string{"Ping", "PingStream", "PingStreamError"},
 		[]string{"PingStream", "PingStreamError"})
 

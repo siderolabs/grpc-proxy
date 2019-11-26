@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package smira.testproto;
+package talos.testproto;
 
 message Empty {
 }

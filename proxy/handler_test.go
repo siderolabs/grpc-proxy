@@ -21,8 +21,8 @@ import (
 
 	"fmt"
 
-	"github.com/smira/grpc-proxy/proxy"
-	pb "github.com/smira/grpc-proxy/testservice"
+	"github.com/talos-systems/grpc-proxy/proxy"
+	pb "github.com/talos-systems/grpc-proxy/testservice"
 )
 
 const (
@@ -229,7 +229,7 @@ func (s *ProxyHappySuite) SetupSuite() {
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
-		"smira.testproto.TestService",
+		"talos.testproto.TestService",
 		[]string{"Ping"},
 		nil)
 
