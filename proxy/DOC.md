@@ -46,26 +46,26 @@ nolint: staticcheck
 #### func  RegisterService
 
 ```go
-func RegisterService(server *grpc.Server, director StreamDirector, serviceName string, methodNames ...string)
+func RegisterService(server *grpc.Server, director StreamDirector, serviceName string, options ...Option)
 ```
 RegisterService sets up a proxy handler for a particular gRPC service and
-method. The behaviour is the same as if you were registering a handler method,
+method. The behavior is the same as if you were registering a handler method,
 e.g. from a codegenerated pb.go file.
 
-This can *only* be used if the `server` also uses grpcproxy.CodecForServer()
+This can *only* be used if the `server` also uses grpc.CustomCodec()
 ServerOption.
 
 #### func  TransparentHandler
 
 ```go
-func TransparentHandler(director StreamDirector) grpc.StreamHandler
+func TransparentHandler(director StreamDirector, options ...Option) grpc.StreamHandler
 ```
 TransparentHandler returns a handler that attempts to proxy all requests that
 are not registered in the server. The indented use here is as a transparent
 proxy, where the server doesn't know about the services implemented by the
 backends. It should be used as a `grpc.UnknownServiceHandler`.
 
-This can *only* be used if the `server` also uses grpcproxy.CodecForServer()
+This can *only* be used if the `server` also uses grpc.CustomCodec()
 ServerOption.
 
 #### type Backend
@@ -114,6 +114,127 @@ providing a connection is enough.
 When proxying one-to-many and aggregating results, Backend might be used to
 append additional fields to upstream response to support more complicated
 proxying.
+
+#### type Mode
+
+```go
+type Mode int
+```
+
+Mode specifies proxying mode: one2one (transparent) or one2many (aggregation,
+error wrapping).
+
+```go
+const (
+	One2One Mode = iota
+	One2Many
+)
+```
+Mode constants.
+
+#### type Option
+
+```go
+type Option func(*handlerOptions)
+```
+
+Option configures gRPC proxy
+
+#### func  WithMethodNames
+
+```go
+func WithMethodNames(methodNames ...string) Option
+```
+WithMethodNames configures list of method names to proxy for non-transparent
+handler.
+
+#### func  WithMode
+
+```go
+func WithMode(mode Mode) Option
+```
+WithMode sets proxying mode: One2One or One2Many.
+
+Default mode is One2One.
+
+#### func  WithStreamedDetector
+
+```go
+func WithStreamedDetector(detector StreamedDetectorFunc) Option
+```
+WithStreamedDetector configures a function to detect streamed methods.
+
+This is only important for one2many proxying.
+
+#### func  WithStreamedMethodNames
+
+```go
+func WithStreamedMethodNames(streamedMethodNames ...string) Option
+```
+WithStreamedMethodNames configures list of streamed method names.
+
+This is only important for one2many proxying. This option can't be used with
+TransparentHandler.
+
+#### type ServerStreamWrapper
+
+```go
+type ServerStreamWrapper struct {
+	grpc.ServerStream
+}
+```
+
+ServerStreamWrapper wraps grpc.ServerStream and adds locking to send path
+
+#### func (*ServerStreamWrapper) SendHeader
+
+```go
+func (wrapper *ServerStreamWrapper) SendHeader(md metadata.MD) error
+```
+SendHeader sends the header metadata. The provided md and headers set by
+SetHeader() will be sent. It fails if called multiple times.
+
+#### func (*ServerStreamWrapper) SendMsg
+
+```go
+func (wrapper *ServerStreamWrapper) SendMsg(m interface{}) error
+```
+SendMsg sends a message. On error, SendMsg aborts the stream and the error is
+returned directly.
+
+SendMsg blocks until:
+
+    - There is sufficient flow control to schedule m with the transport, or
+    - The stream is done, or
+    - The stream breaks.
+
+SendMsg does not wait until the message is received by the client. An untimely
+stream closure may result in lost messages.
+
+It is safe to have a goroutine calling SendMsg and another goroutine calling
+RecvMsg on the same stream at the same time, but it is not safe to call SendMsg
+on the same stream in different goroutines.
+
+#### func (*ServerStreamWrapper) SetHeader
+
+```go
+func (wrapper *ServerStreamWrapper) SetHeader(md metadata.MD) error
+```
+SetHeader sets the header metadata. It may be called multiple times. When call
+multiple times, all the provided metadata will be merged. All the metadata will
+be sent out when one of the following happens:
+
+    - ServerStream.SendHeader() is called;
+    - The first response is sent out;
+    - An RPC status is sent out (error or success).
+
+#### func (*ServerStreamWrapper) SetTrailer
+
+```go
+func (wrapper *ServerStreamWrapper) SetTrailer(md metadata.MD)
+```
+SetTrailer sets the trailer metadata which will be sent with the RPC status.
+When called more than once, all the provided metadata will be merged.
 
 #### type SingleBackend
 
@@ -186,3 +307,12 @@ stream interceptors are invoked. So decisions around authorization, monitoring
 etc. are better to be handled there.
 
 See the rather rich example.
+
+#### type StreamedDetectorFunc
+
+```go
+type StreamedDetectorFunc func(fullMethodName string) bool
+```
+
+StreamedDetectorFunc reports is gRPC is doing streaming (only for one2many
+proxying).

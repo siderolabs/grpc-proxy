@@ -25,8 +25,10 @@ func ExampleRegisterService() {
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
 		"talos.testproto.TestService",
-		[]string{"PingEmpty", "Ping", "PingError", "PingList"},
-		[]string{"PingList"})
+		proxy.WithMode(proxy.One2Many),
+		proxy.WithMethodNames("PingEmpty", "Ping", "PingError", "PingList"),
+		proxy.WithStreamedMethodNames("PingList"),
+	)
 }
 
 func ExampleTransparentHandler() {

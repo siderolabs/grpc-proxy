@@ -74,7 +74,10 @@ locally:
 ```go
 server := grpc.NewServer(
     grpc.CustomCodec(proxy.Codec()),
-    grpc.UnknownServiceHandler(proxy.TransparentHandler(director)))
+    grpc.UnknownServiceHandler(
+        proxy.TransparentHandler(director),
+        proxy.WithMode(proxy.One2One),
+    ))
 pb_test.RegisterTestServiceServer(server, &testImpl{})
 ```
 

@@ -37,6 +37,7 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: ./coverage.txt
+      if: github.event_name == 'push'
 
   lint:
     name: Lint
