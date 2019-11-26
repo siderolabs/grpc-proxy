@@ -92,8 +92,8 @@ func (s *assertingService) PingStream(stream pb.TestService_PingStreamServer) er
 	return nil
 }
 
-// ProxyHappySuite tests the "happy" path of handling: that everything works in absence of connection issues.
-type ProxyHappySuite struct {
+// ProxyOne2OneSuite tests the "happy" path of handling: that everything works in absence of connection issues.
+type ProxyOne2OneSuite struct {
 	suite.Suite
 
 	serverListener   net.Listener
@@ -109,28 +109,28 @@ type ProxyHappySuite struct {
 	ctxCancel context.CancelFunc
 }
 
-func (s *ProxyHappySuite) SetupTest() {
+func (s *ProxyOne2OneSuite) SetupTest() {
 	s.ctx, s.ctxCancel = context.WithTimeout(context.TODO(), 120*time.Second)
 }
 
-func (s *ProxyHappySuite) TearDownTest() {
+func (s *ProxyOne2OneSuite) TearDownTest() {
 	s.ctxCancel()
 }
 
-func (s *ProxyHappySuite) TestPingEmptyCarriesClientMetadata() {
+func (s *ProxyOne2OneSuite) TestPingEmptyCarriesClientMetadata() {
 	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(clientMdKey, "true"))
 	out, err := s.testClient.PingEmpty(ctx, &pb.Empty{})
 	require.NoError(s.T(), err, "PingEmpty should succeed without errors")
 	require.Equal(s.T(), &pb.PingResponse{Value: pingDefaultValue, Counter: 42}, out)
 }
 
-func (s *ProxyHappySuite) TestPingEmpty_StressTest() {
+func (s *ProxyOne2OneSuite) TestPingEmpty_StressTest() {
 	for i := 0; i < 50; i++ {
 		s.TestPingEmptyCarriesClientMetadata()
 	}
 }
 
-func (s *ProxyHappySuite) TestPingCarriesServerHeadersAndTrailers() {
+func (s *ProxyOne2OneSuite) TestPingCarriesServerHeadersAndTrailers() {
 	headerMd := make(metadata.MD)
 	trailerMd := make(metadata.MD)
 	// This is an awkward calling convention... but meh.
@@ -141,14 +141,14 @@ func (s *ProxyHappySuite) TestPingCarriesServerHeadersAndTrailers() {
 	assert.Len(s.T(), trailerMd, 1, "server response trailers must contain server data")
 }
 
-func (s *ProxyHappySuite) TestPingErrorPropagatesAppError() {
+func (s *ProxyOne2OneSuite) TestPingErrorPropagatesAppError() {
 	_, err := s.testClient.PingError(s.ctx, &pb.PingRequest{Value: "foo"})
 	require.Error(s.T(), err, "PingError should never succeed")
 	assert.Equal(s.T(), codes.FailedPrecondition, status.Code(err))
 	assert.Equal(s.T(), "Userspace error.", status.Convert(err).Message())
 }
 
-func (s *ProxyHappySuite) TestDirectorErrorIsPropagated() {
+func (s *ProxyOne2OneSuite) TestDirectorErrorIsPropagated() {
 	// See SetupSuite where the StreamDirector has a special case.
 	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(rejectingMdKey, "true"))
 	_, err := s.testClient.Ping(ctx, &pb.PingRequest{Value: "foo"})
@@ -157,7 +157,7 @@ func (s *ProxyHappySuite) TestDirectorErrorIsPropagated() {
 	assert.Equal(s.T(), "testing rejection", status.Convert(err).Message())
 }
 
-func (s *ProxyHappySuite) TestPingStream_FullDuplexWorks() {
+func (s *ProxyOne2OneSuite) TestPingStream_FullDuplexWorks() {
 	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
 
@@ -184,13 +184,13 @@ func (s *ProxyHappySuite) TestPingStream_FullDuplexWorks() {
 	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
 }
 
-func (s *ProxyHappySuite) TestPingStream_StressTest() {
+func (s *ProxyOne2OneSuite) TestPingStream_StressTest() {
 	for i := 0; i < 50; i++ {
 		s.TestPingStream_FullDuplexWorks()
 	}
 }
 
-func (s *ProxyHappySuite) SetupSuite() {
+func (s *ProxyOne2OneSuite) SetupSuite() {
 	var err error
 
 	s.proxyListener, err = net.Listen("tcp", "127.0.0.1:0")
@@ -225,13 +225,13 @@ func (s *ProxyHappySuite) SetupSuite() {
 	}
 	s.proxy = grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()),
-		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(director, proxy.WithMode(proxy.One2One))),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"talos.testproto.TestService",
-		[]string{"Ping"},
-		nil)
+		proxy.WithMethodNames("Ping"),
+	)
 
 	// Start the serving loops.
 	s.T().Logf("starting grpc.Server at: %v", s.serverListener.Addr().String())
@@ -250,7 +250,7 @@ func (s *ProxyHappySuite) SetupSuite() {
 	s.testClient = pb.NewTestServiceClient(clientConn)
 }
 
-func (s *ProxyHappySuite) TearDownSuite() {
+func (s *ProxyOne2OneSuite) TearDownSuite() {
 	if s.client != nil {
 		s.client.Close()
 	}
@@ -269,6 +269,6 @@ func (s *ProxyHappySuite) TearDownSuite() {
 	}
 }
 
-func TestProxyHappySuite(t *testing.T) {
-	suite.Run(t, &ProxyHappySuite{})
+func TestProxyOne2OneSuite(t *testing.T) {
+	suite.Run(t, &ProxyOne2OneSuite{})
 }

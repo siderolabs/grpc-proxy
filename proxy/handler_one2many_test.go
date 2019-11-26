@@ -28,8 +28,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/talos-systems/grpc-proxy/testservice"
 	"github.com/talos-systems/grpc-proxy/proxy"
+	pb "github.com/talos-systems/grpc-proxy/testservice"
 )
 
 const (
@@ -199,7 +199,7 @@ func (b *assertingBackend) BuildError(err error) ([]byte, error) {
 	})
 }
 
-type MultiServiceSuite struct {
+type ProxyOne2ManySuite struct {
 	suite.Suite
 
 	serverListeners  []net.Listener
@@ -215,7 +215,7 @@ type MultiServiceSuite struct {
 	ctxCancel context.CancelFunc
 }
 
-func (s *MultiServiceSuite) TestPingEmptyCarriesClientMetadata() {
+func (s *ProxyOne2ManySuite) TestPingEmptyCarriesClientMetadata() {
 	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(clientMdKey, "true"))
 	out, err := s.testClient.PingEmpty(ctx, &pb.Empty{})
 	require.NoError(s.T(), err, "PingEmpty should succeed without errors")
@@ -239,13 +239,13 @@ func (s *MultiServiceSuite) TestPingEmptyCarriesClientMetadata() {
 	s.Require().Empty(expectedUpstreams)
 }
 
-func (s *MultiServiceSuite) TestPingEmpty_StressTest() {
+func (s *ProxyOne2ManySuite) TestPingEmpty_StressTest() {
 	for i := 0; i < 50; i++ {
 		s.TestPingEmptyCarriesClientMetadata()
 	}
 }
 
-func (s *MultiServiceSuite) TestPingEmptyTargets() {
+func (s *ProxyOne2ManySuite) TestPingEmptyTargets() {
 	for _, targets := range [][]string{
 		{"1", "2"},
 		{"3", "2", "1"},
@@ -277,7 +277,7 @@ func (s *MultiServiceSuite) TestPingEmptyTargets() {
 		s.Require().Empty(expectedUpstreams)
 	}
 }
-func (s *MultiServiceSuite) TestPingEmptyConnError() {
+func (s *ProxyOne2ManySuite) TestPingEmptyConnError() {
 	targets := []string{"0", "-1", "2"}
 	md := metadata.Pairs(clientMdKey, "true")
 	md.Set("targets", targets...)
@@ -309,7 +309,7 @@ func (s *MultiServiceSuite) TestPingEmptyConnError() {
 	s.Require().Empty(expectedUpstreams)
 }
 
-func (s *MultiServiceSuite) TestPingCarriesServerHeadersAndTrailers() {
+func (s *ProxyOne2ManySuite) TestPingCarriesServerHeadersAndTrailers() {
 	headerMd := make(metadata.MD)
 	trailerMd := make(metadata.MD)
 	// This is an awkward calling convention... but meh.
@@ -329,7 +329,7 @@ func (s *MultiServiceSuite) TestPingCarriesServerHeadersAndTrailers() {
 	assert.Len(s.T(), trailerMd, 1, "server response trailers must contain server data")
 }
 
-func (s *MultiServiceSuite) TestPingErrorPropagatesAppError() {
+func (s *ProxyOne2ManySuite) TestPingErrorPropagatesAppError() {
 	out, err := s.testClient.PingError(s.ctx, &pb.PingRequest{Value: "foo"})
 	s.Require().NoError(err, "error should be encapsulated in the response")
 
@@ -341,7 +341,7 @@ func (s *MultiServiceSuite) TestPingErrorPropagatesAppError() {
 	}
 }
 
-func (s *MultiServiceSuite) TestPingStreamErrorPropagatesAppError() {
+func (s *ProxyOne2ManySuite) TestPingStreamErrorPropagatesAppError() {
 	stream, err := s.testClient.PingStreamError(s.ctx)
 	s.Require().NoError(err, "error should be encapsulated in the response")
 
@@ -358,7 +358,7 @@ func (s *MultiServiceSuite) TestPingStreamErrorPropagatesAppError() {
 	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
 }
 
-func (s *MultiServiceSuite) TestPingStreamConnError() {
+func (s *ProxyOne2ManySuite) TestPingStreamConnError() {
 	targets := []string{"0", "-1", "2"}
 	md := metadata.Pairs(clientMdKey, "true")
 	md.Set("targets", targets...)
@@ -379,7 +379,7 @@ func (s *MultiServiceSuite) TestPingStreamConnError() {
 	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
 }
 
-func (s *MultiServiceSuite) TestDirectorErrorIsPropagated() {
+func (s *ProxyOne2ManySuite) TestDirectorErrorIsPropagated() {
 	// See SetupSuite where the StreamDirector has a special case.
 	ctx := metadata.NewOutgoingContext(s.ctx, metadata.Pairs(rejectingMdKey, "true"))
 	_, err := s.testClient.Ping(ctx, &pb.PingRequest{Value: "foo"})
@@ -388,7 +388,7 @@ func (s *MultiServiceSuite) TestDirectorErrorIsPropagated() {
 	assert.Equal(s.T(), "testing rejection", status.Convert(err).Message())
 }
 
-func (s *MultiServiceSuite) TestPingStream_FullDuplexWorks() {
+func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexWorks() {
 	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
 
@@ -430,7 +430,7 @@ func (s *MultiServiceSuite) TestPingStream_FullDuplexWorks() {
 	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
 }
 
-func (s *MultiServiceSuite) TestPingStream_FullDuplexConcurrent() {
+func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexConcurrent() {
 	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
 
@@ -497,21 +497,21 @@ func (s *MultiServiceSuite) TestPingStream_FullDuplexConcurrent() {
 	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
 }
 
-func (s *MultiServiceSuite) TestPingStream_StressTest() {
+func (s *ProxyOne2ManySuite) TestPingStream_StressTest() {
 	for i := 0; i < 50; i++ {
 		s.TestPingStream_FullDuplexWorks()
 	}
 }
 
-func (s *MultiServiceSuite) SetupTest() {
+func (s *ProxyOne2ManySuite) SetupTest() {
 	s.ctx, s.ctxCancel = context.WithTimeout(context.TODO(), 120*time.Second)
 }
 
-func (s *MultiServiceSuite) TearDownTest() {
+func (s *ProxyOne2ManySuite) TearDownTest() {
 	s.ctxCancel()
 }
 
-func (s *MultiServiceSuite) SetupSuite() {
+func (s *ProxyOne2ManySuite) SetupSuite() {
 	var err error
 
 	s.proxyListener, err = net.Listen("tcp", "127.0.0.1:0")
@@ -592,13 +592,15 @@ func (s *MultiServiceSuite) SetupSuite() {
 
 	s.proxy = grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()),
-		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(director, proxy.WithMode(proxy.One2Many))),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"talos.testproto.MultiService",
-		[]string{"Ping", "PingStream", "PingStreamError"},
-		[]string{"PingStream", "PingStreamError"})
+		proxy.WithMode(proxy.One2Many),
+		proxy.WithMethodNames("Ping", "PingStream", "PingStreamError"),
+		proxy.WithStreamedMethodNames("PingStream", "PingStreamError"),
+	)
 
 	// Start the serving loops.
 	for i := range s.servers {
@@ -619,7 +621,7 @@ func (s *MultiServiceSuite) SetupSuite() {
 	s.testClient = pb.NewMultiServiceClient(clientConn)
 }
 
-func (s *MultiServiceSuite) TearDownSuite() {
+func (s *ProxyOne2ManySuite) TearDownSuite() {
 	if s.client != nil {
 		s.client.Close()
 	}
@@ -646,8 +648,8 @@ func (s *MultiServiceSuite) TearDownSuite() {
 		}
 	}
 }
-func TestMultiServiceSuite(t *testing.T) {
-	suite.Run(t, &MultiServiceSuite{})
+func TestProxyOne2ManySuite(t *testing.T) {
+	suite.Run(t, &ProxyOne2ManySuite{})
 }
 
 func init() {

@@ -15,17 +15,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *handler) handlerMulti(fullMethodName string, serverStream grpc.ServerStream, backendConnections []backendConnection) error {
+func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.ServerStream, backendConnections []backendConnection) error {
 	// wrap the stream for safe concurrent access
 	serverStream = &ServerStreamWrapper{ServerStream: serverStream}
 
 	s2cErrChan := s.forwardServerToClientsMulti(serverStream, backendConnections)
 	var c2sErrChan chan error
 
-	if _, streamed := s.streamedMethods[fullMethodName]; !streamed {
-		c2sErrChan = s.forwardClientsToServerMultiUnary(backendConnections, serverStream)
-	} else {
+	if s.options.streamedDetector != nil && s.options.streamedDetector(fullMethodName) {
 		c2sErrChan = s.forwardClientsToServerMultiStreaming(backendConnections, serverStream)
+	} else {
+		c2sErrChan = s.forwardClientsToServerMultiUnary(backendConnections, serverStream)
 	}
 
 	for i := 0; i < 2; i++ {
