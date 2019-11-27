@@ -250,6 +250,7 @@ func (s *ProxyOne2ManySuite) TestPingEmptyTargets() {
 		{"1", "2"},
 		{"3", "2", "1"},
 		{"0", "4"},
+		{"3"},
 	} {
 		md := metadata.Pairs(clientMdKey, "true")
 		md.Set("targets", targets...)
@@ -550,20 +551,20 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 	}
 
 	// Setup of the proxy's Director.
-	director := func(ctx context.Context, fullName string) ([]proxy.Backend, error) {
+	director := func(ctx context.Context, fullName string) (proxy.Mode, []proxy.Backend, error) {
 		var targets []int
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			if _, exists := md[rejectingMdKey]; exists {
-				return nil, status.Errorf(codes.PermissionDenied, "testing rejection")
+				return proxy.One2Many, nil, status.Errorf(codes.PermissionDenied, "testing rejection")
 			}
 
 			if mdTargets, exists := md["targets"]; exists {
 				for _, strTarget := range mdTargets {
 					t, err := strconv.Atoi(strTarget)
 					if err != nil {
-						return nil, err
+						return proxy.One2Many, nil, err
 					}
 
 					targets = append(targets, t)
@@ -587,17 +588,16 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 			}
 		}
 
-		return result, nil
+		return proxy.One2Many, result, nil
 	}
 
 	s.proxy = grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()),
-		grpc.UnknownServiceHandler(proxy.TransparentHandler(director, proxy.WithMode(proxy.One2Many))),
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,
 		"talos.testproto.MultiService",
-		proxy.WithMode(proxy.One2Many),
 		proxy.WithMethodNames("Ping", "PingStream", "PingStreamError"),
 		proxy.WithStreamedMethodNames("PingStream", "PingStreamError"),
 	)

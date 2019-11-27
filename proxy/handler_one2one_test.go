@@ -204,15 +204,15 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	// Setup of the proxy's Director.
 	s.serverClientConn, err = grpc.Dial(s.serverListener.Addr().String(), grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
-	director := func(ctx context.Context, fullName string) ([]proxy.Backend, error) {
+	director := func(ctx context.Context, fullName string) (proxy.Mode, []proxy.Backend, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			if _, exists := md[rejectingMdKey]; exists {
-				return nil, status.Errorf(codes.PermissionDenied, "testing rejection")
+				return proxy.One2One, nil, status.Errorf(codes.PermissionDenied, "testing rejection")
 			}
 		}
 
-		return []proxy.Backend{
+		return proxy.One2One, []proxy.Backend{
 			&proxy.SingleBackend{
 				GetConn: func(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
 					md, _ := metadata.FromIncomingContext(ctx)
@@ -225,7 +225,7 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	}
 	s.proxy = grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()),
-		grpc.UnknownServiceHandler(proxy.TransparentHandler(director, proxy.WithMode(proxy.One2One))),
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
 	proxy.RegisterService(s.proxy, director,

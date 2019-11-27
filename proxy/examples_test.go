@@ -25,7 +25,6 @@ func ExampleRegisterService() {
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
 		"talos.testproto.TestService",
-		proxy.WithMode(proxy.One2Many),
 		proxy.WithMethodNames("PingEmpty", "Ping", "PingError", "PingList"),
 		proxy.WithStreamedMethodNames("PingList"),
 	)
@@ -55,21 +54,21 @@ func ExampleStreamDirector() {
 		}
 	}
 
-	director = func(ctx context.Context, fullMethodName string) ([]proxy.Backend, error) {
+	director = func(ctx context.Context, fullMethodName string) (proxy.Mode, []proxy.Backend, error) {
 		// Make sure we never forward internal services.
 		if strings.HasPrefix(fullMethodName, "/com.example.internal.") {
-			return nil, status.Errorf(codes.Unimplemented, "Unknown method")
+			return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 		}
 		md, ok := metadata.FromIncomingContext(ctx)
 
 		if ok {
 			// Decide on which backend to dial
 			if val, exists := md[":authority"]; exists && val[0] == "staging.api.example.com" {
-				return []proxy.Backend{simpleBackendGen("api-service.staging.svc.local")}, nil
+				return proxy.One2One, []proxy.Backend{simpleBackendGen("api-service.staging.svc.local")}, nil
 			} else if val, exists := md[":authority"]; exists && val[0] == "api.example.com" {
-				return []proxy.Backend{simpleBackendGen("api-service.prod.svc.local")}, nil
+				return proxy.One2One, []proxy.Backend{simpleBackendGen("api-service.prod.svc.local")}, nil
 			}
 		}
-		return nil, status.Errorf(codes.Unimplemented, "Unknown method")
+		return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 	}
 }

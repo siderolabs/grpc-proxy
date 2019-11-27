@@ -20,7 +20,6 @@ var (
 )
 
 type handlerOptions struct {
-	mode             Mode
 	serviceName      string
 	methodNames      []string
 	streamedMethods  map[string]struct{}
@@ -51,7 +50,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 		return status.Errorf(codes.Internal, "lowLevelServerStream not exists in context")
 	}
 
-	backends, err := s.director(serverStream.Context(), fullMethodName)
+	mode, backends, err := s.director(serverStream.Context(), fullMethodName)
 	if err != nil {
 		return err
 	}
@@ -80,7 +79,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 		}
 	}
 
-	switch s.options.mode {
+	switch mode {
 	case One2One:
 		if len(backendConnections) != 1 {
 			return status.Errorf(codes.Internal, "one2one proxying can't should have exactly one connection (got %d)", len(backendConnections))
