@@ -57,15 +57,6 @@ func WithStreamedDetector(detector StreamedDetectorFunc) Option {
 	}
 }
 
-// WithMode sets proxying mode: One2One or One2Many.
-//
-// Default mode is One2One.
-func WithMode(mode Mode) Option {
-	return func(o *handlerOptions) {
-		o.mode = mode
-	}
-}
-
 // RegisterService sets up a proxy handler for a particular gRPC service and method.
 // The behavior is the same as if you were registering a handler method, e.g. from a codegenerated pb.go file.
 //
