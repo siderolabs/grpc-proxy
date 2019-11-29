@@ -58,8 +58,8 @@ func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.Serve
 }
 
 // formatError tries to format error from upstream as message to the client
-func (s *handler) formatError(src *backendConnection, backendErr error) ([]byte, error) {
-	payload, err := src.backend.BuildError(backendErr)
+func (s *handler) formatError(streaming bool, src *backendConnection, backendErr error) ([]byte, error) {
+	payload, err := src.backend.BuildError(streaming, backendErr)
 	if err != nil {
 		return nil, fmt.Errorf("error building error for %s: %w", src.backend, err)
 	}
@@ -76,7 +76,7 @@ func (s *handler) formatError(src *backendConnection, backendErr error) ([]byte,
 // if sendError fails to deliver the error, error is returned
 // if sendError successfully delivers the error, nil is returned
 func (s *handler) sendError(src *backendConnection, dst grpc.ServerStream, backendErr error) error {
-	payload, err := s.formatError(src, backendErr)
+	payload, err := s.formatError(true, src, backendErr)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 		go func(src *backendConnection) {
 			errCh <- func() error {
 				if src.connError != nil {
-					payload, err := s.formatError(src, src.connError)
+					payload, err := s.formatError(false, src, src.connError)
 					if err != nil {
 						return err
 					}
@@ -120,7 +120,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 							return nil
 						}
 
-						payload, err := s.formatError(src, err)
+						payload, err := s.formatError(false, src, err)
 						if err != nil {
 							return err
 						}
@@ -134,7 +134,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 						// This is the only place to do it nicely.
 						md, err := src.clientStream.Header()
 						if err != nil {
-							payload, err := s.formatError(src, err)
+							payload, err := s.formatError(false, src, err)
 							if err != nil {
 								return err
 							}
@@ -149,7 +149,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 					}
 
 					var err error
-					f.payload, err = src.backend.AppendInfo(f.payload)
+					f.payload, err = src.backend.AppendInfo(false, f.payload)
 					if err != nil {
 						return fmt.Errorf("error appending info for %s: %w", src.backend, err)
 					}
@@ -224,7 +224,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 					}
 
 					var err error
-					f.payload, err = src.backend.AppendInfo(f.payload)
+					f.payload, err = src.backend.AppendInfo(true, f.payload)
 					if err != nil {
 						return fmt.Errorf("error appending info for %s: %w", src.backend, err)
 					}

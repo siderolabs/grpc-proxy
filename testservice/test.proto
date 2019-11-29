@@ -2,12 +2,9 @@ syntax = "proto3";
 
 package talos.testproto;
 
-message Empty {
-}
+message Empty {}
 
-message PingRequest {
-  string value = 1;
-}
+message PingRequest { string value = 1; }
 
 message PingResponse {
   string Value = 1;
@@ -24,7 +21,6 @@ service TestService {
   rpc PingList(PingRequest) returns (stream PingResponse) {}
 
   rpc PingStream(stream PingRequest) returns (stream PingResponse) {}
-
 }
 
 message ResponseMetadata {
@@ -32,9 +28,7 @@ message ResponseMetadata {
   string upstream_error = 100;
 }
 
-message ResponseMetadataPrepender {
-  ResponseMetadata metadata = 99;
-}
+message ResponseMetadataPrepender { ResponseMetadata metadata = 99; }
 
 message MultiPingResponse {
   ResponseMetadata metadata = 99;
@@ -43,17 +37,11 @@ message MultiPingResponse {
   string server = 3;
 }
 
-message MultiPingReply {
-  repeated MultiPingResponse response = 1;
-}
+message MultiPingReply { repeated MultiPingResponse response = 1; }
 
-message EmptyReply {
-  repeated EmptyResponse response = 1;
-}
+message EmptyReply { repeated EmptyResponse response = 1; }
 
-message EmptyResponse {
-  ResponseMetadata metadata = 99;
-}
+message EmptyResponse { ResponseMetadata metadata = 99; }
 
 service MultiService {
   rpc PingEmpty(Empty) returns (MultiPingReply) {}
@@ -62,9 +50,9 @@ service MultiService {
 
   rpc PingError(PingRequest) returns (EmptyReply) {}
 
-  rpc PingList(PingRequest) returns (stream MultiPingReply) {}
+  rpc PingList(PingRequest) returns (stream MultiPingResponse) {}
 
-  rpc PingStream(stream PingRequest) returns (stream MultiPingReply) {}
+  rpc PingStream(stream PingRequest) returns (stream MultiPingResponse) {}
 
-  rpc PingStreamError(stream PingRequest) returns (stream MultiPingReply) {}
+  rpc PingStreamError(stream PingRequest) returns (stream MultiPingResponse) {}
 }
