@@ -31,17 +31,19 @@ type Backend interface {
 
 	// AppendInfo is called to enhance response from the backend with additional data.
 	//
+	// Parameter streaming indicates if response is delivered in streaming mode or not.
+	//
 	// Usecase might be appending backend endpoint (or name) to the protobuf serialized response, so that response is enhanced
 	// with source information. This is particularly important for one to many calls, when it is required to identify
 	// response from each of the backends participating in the proxying.
 	//
 	// If not additional proxying is required, simply returning the buffer without changes works fine.
-	AppendInfo(resp []byte) ([]byte, error)
+	AppendInfo(streaming bool, resp []byte) ([]byte, error)
 
 	// BuildError is called to convert error from upstream into response field.
 	//
 	// BuildError is never called for one to one proxying, in that case all the errors are returned back to the caller
-	// as grpc errors.
+	// as grpc errors. Parameter streaming indicates if response is delivered in streaming mode or not.
 	//
 	// When proxying one to many, if one the requests fails or upstream returns an error, it is undesirable to fail the whole
 	// request and discard responses from other backends. BuildError converts (marshals) error from backend into protobuf encoded
@@ -49,7 +51,7 @@ type Backend interface {
 	// N2 error responses so that N1 + N2 == N.
 	//
 	// If BuildError returns nil, error is returned as grpc error (failing whole request).
-	BuildError(err error) ([]byte, error)
+	BuildError(streaming bool, err error) ([]byte, error)
 }
 
 // SingleBackend implements a simple wrapper around get connection function of one to one proxying.
@@ -74,12 +76,12 @@ func (sb *SingleBackend) GetConnection(ctx context.Context) (context.Context, *g
 }
 
 // AppendInfo is called to enhance response from the backend with additional data.
-func (sb *SingleBackend) AppendInfo(resp []byte) ([]byte, error) {
+func (sb *SingleBackend) AppendInfo(streaming bool, resp []byte) ([]byte, error) {
 	return resp, nil
 }
 
 // BuildError is called to convert error from upstream into response field.
-func (sb *SingleBackend) BuildError(err error) ([]byte, error) {
+func (sb *SingleBackend) BuildError(streaming bool, err error) ([]byte, error) {
 	return nil, nil
 }
 

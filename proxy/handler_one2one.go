@@ -64,13 +64,6 @@ func (s *handler) forwardClientToServer(src *backendConnection, dst grpc.ServerS
 				break
 			}
 
-			var err error
-			f.payload, err = src.backend.AppendInfo(f.payload)
-			if err != nil {
-				ret <- err
-				break
-			}
-
 			if i == 0 {
 				// This is a bit of a hack, but client to server headers are only readable after first client msg is
 				// received but must be written to server stream before the first msg is flushed.

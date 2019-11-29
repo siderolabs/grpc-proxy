@@ -82,14 +82,10 @@ func (s *assertingMultiService) PingList(ping *pb.PingRequest, stream pb.MultiSe
 	// Send user trailers and headers.
 	stream.SendHeader(metadata.Pairs(serverHeaderMdKey, "I like turtles.")) //nolint: errcheck
 	for i := 0; i < countListResponses; i++ {
-		stream.Send(&pb.MultiPingReply{ //nolint: errcheck
-			Response: []*pb.MultiPingResponse{
-				{
-					Value:   ping.Value,
-					Counter: int32(i),
-					Server:  s.server,
-				},
-			},
+		stream.Send(&pb.MultiPingResponse{ //nolint: errcheck
+			Value:   ping.Value,
+			Counter: int32(i),
+			Server:  s.server,
 		})
 	}
 	stream.SetTrailer(metadata.Pairs(serverTrailerMdKey, "I like ending turtles.")) //nolint: errcheck
@@ -107,14 +103,10 @@ func (s *assertingMultiService) PingStream(stream pb.MultiService_PingStreamServ
 			require.NoError(s.t, err, "can't fail reading stream")
 			return err
 		}
-		pong := &pb.MultiPingReply{
-			Response: []*pb.MultiPingResponse{
-				{
-					Value:   ping.Value,
-					Counter: counter,
-					Server:  s.server,
-				},
-			},
+		pong := &pb.MultiPingResponse{
+			Value:   ping.Value,
+			Counter: counter,
+			Server:  s.server,
 		}
 		if err := stream.Send(pong); err != nil {
 			require.NoError(s.t, err, "can't fail sending back a pong")
@@ -162,7 +154,17 @@ func (b *assertingBackend) GetConnection(ctx context.Context) (context.Context, 
 	return outCtx, b.conn, err
 }
 
-func (b *assertingBackend) AppendInfo(resp []byte) ([]byte, error) {
+func (b *assertingBackend) AppendInfo(streaming bool, resp []byte) ([]byte, error) {
+	payload, err := proto.Marshal(&pb.ResponseMetadataPrepender{
+		Metadata: &pb.ResponseMetadata{
+			Hostname: fmt.Sprintf("server%d", b.i),
+		},
+	})
+
+	if streaming {
+		return append(resp, payload...), err
+	}
+
 	// decode protobuf embedded header
 	typ, n1 := proto.DecodeVarint(resp)
 	_, n2 := proto.DecodeVarint(resp[n1:]) // length
@@ -170,12 +172,6 @@ func (b *assertingBackend) AppendInfo(resp []byte) ([]byte, error) {
 	if typ != (1<<3)|2 { // type: 2, field_number: 1
 		return nil, fmt.Errorf("unexpected message format: %d", typ)
 	}
-
-	payload, err := proto.Marshal(&pb.ResponseMetadataPrepender{
-		Metadata: &pb.ResponseMetadata{
-			Hostname: fmt.Sprintf("server%d", b.i),
-		},
-	})
 
 	// cut off embedded message header
 	resp = resp[n1+n2:]
@@ -186,8 +182,8 @@ func (b *assertingBackend) AppendInfo(resp []byte) ([]byte, error) {
 	return append(resp, payload...), err
 }
 
-func (b *assertingBackend) BuildError(err error) ([]byte, error) {
-	return proto.Marshal(&pb.EmptyReply{
+func (b *assertingBackend) BuildError(streaming bool, err error) ([]byte, error) {
+	resp := &pb.EmptyReply{
 		Response: []*pb.EmptyResponse{
 			{
 				Metadata: &pb.ResponseMetadata{
@@ -196,7 +192,13 @@ func (b *assertingBackend) BuildError(err error) ([]byte, error) {
 				},
 			},
 		},
-	})
+	}
+
+	if streaming {
+		return proto.Marshal(resp.Response[0])
+	}
+
+	return proto.Marshal(resp)
 }
 
 type ProxyOne2ManySuite struct {
@@ -350,8 +352,7 @@ func (s *ProxyOne2ManySuite) TestPingStreamErrorPropagatesAppError() {
 		resp, err := stream.Recv()
 		s.Require().NoError(err)
 
-		s.Assert().Len(resp.Response, 1)
-		s.Assert().Equal("rpc error: code = FailedPrecondition desc = Userspace error.", resp.Response[0].Metadata.UpstreamError)
+		s.Assert().Equal("rpc error: code = FailedPrecondition desc = Userspace error.", resp.Metadata.UpstreamError)
 	}
 
 	require.NoError(s.T(), stream.CloseSend(), "no error on close send")
@@ -373,8 +374,7 @@ func (s *ProxyOne2ManySuite) TestPingStreamConnError() {
 	resp, err := stream.Recv()
 	s.Require().NoError(err)
 
-	s.Assert().Len(resp.Response, 1)
-	s.Assert().Equal("rpc error: code = Unavailable desc = backend connection failed", resp.Response[0].Metadata.UpstreamError)
+	s.Assert().Equal("rpc error: code = Unavailable desc = backend connection failed", resp.Metadata.UpstreamError)
 
 	_, err = stream.Recv()
 	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaning OK")
@@ -407,11 +407,10 @@ func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexWorks() {
 			resp, err := stream.Recv()
 			s.Require().NoError(err)
 
-			s.Assert().Len(resp.Response, 1)
-			s.Assert().EqualValues(i, resp.Response[0].Counter, "ping roundtrip must succeed with the correct id")
-			s.Assert().EqualValues(resp.Response[0].Metadata.Hostname, resp.Response[0].Server)
+			s.Assert().EqualValues(i, resp.Counter, "ping roundtrip must succeed with the correct id")
+			s.Assert().EqualValues(resp.Metadata.Hostname, resp.Server)
 
-			delete(expectedUpstreams, resp.Response[0].Metadata.Hostname)
+			delete(expectedUpstreams, resp.Metadata.Hostname)
 		}
 
 		s.Require().Empty(expectedUpstreams)
@@ -464,24 +463,24 @@ func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexConcurrent() {
 					return err
 				}
 
-				if len(resp.Response) != 1 {
-					return fmt.Errorf("single response expected: %d", len(resp.Response))
+				if resp.Metadata == nil {
+					return fmt.Errorf("response metadata expected: %v", resp)
 				}
 
-				if resp.Response[0].Metadata.Hostname != resp.Response[0].Server {
-					return fmt.Errorf("mismatch on host metadata: %v != %v", resp.Response[0].Metadata.Hostname, resp.Response[0].Server)
+				if resp.Metadata.Hostname != resp.Server {
+					return fmt.Errorf("mismatch on host metadata: %v != %v", resp.Metadata.Hostname, resp.Server)
 				}
 
-				expectedCounter, ok := expectedUpstreams[resp.Response[0].Server]
+				expectedCounter, ok := expectedUpstreams[resp.Server]
 				if !ok {
-					return fmt.Errorf("unexpected host: %v", resp.Response[0].Server)
+					return fmt.Errorf("unexpected host: %v", resp.Server)
 				}
 
-				if expectedCounter != resp.Response[0].Counter {
-					return fmt.Errorf("unexpected counter value: %d != %d", expectedCounter, resp.Response[0].Counter)
+				if expectedCounter != resp.Counter {
+					return fmt.Errorf("unexpected counter value: %d != %d", expectedCounter, resp.Counter)
 				}
 
-				expectedUpstreams[resp.Response[0].Server]++
+				expectedUpstreams[resp.Server]++
 			}
 
 			return nil
