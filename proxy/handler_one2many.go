@@ -4,6 +4,7 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -83,6 +84,14 @@ func (s *handler) sendError(src *backendConnection, dst grpc.ServerStream, backe
 
 	f := &frame{payload: payload}
 	if err = dst.SendMsg(f); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
+		if rpcStatus, ok := status.FromError(err); ok && rpcStatus.Message() == "transport is closing" {
+			return nil
+		}
+
 		return fmt.Errorf("error sending error back: %w", err)
 	}
 
