@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package talos.testproto;
+
+message Empty {}
+
+message PingRequest { string value = 1; }
+
+message PingResponse {
+  string Value = 1;
+  int32 counter = 2;
+}
+
+service TestService {
+  rpc PingEmpty(Empty) returns (PingResponse) {}
+
+  rpc Ping(PingRequest) returns (PingResponse) {}
+
+  rpc PingError(PingRequest) returns (Empty) {}
+
+  rpc PingList(PingRequest) returns (stream PingResponse) {}
+
+  rpc PingStream(stream PingRequest) returns (stream PingResponse) {}
+}
+
+message ResponseMetadata {
+  string hostname = 99;
+  string upstream_error = 100;
+}
+
+message ResponseMetadataPrepender { ResponseMetadata metadata = 99; }
+
+message MultiPingResponse {
+  ResponseMetadata metadata = 99;
+  string Value = 1;
+  int32 counter = 2;
+  string server = 3;
+}
+
+message MultiPingReply { repeated MultiPingResponse response = 1; }
+
+message EmptyReply { repeated EmptyResponse response = 1; }
+
+message EmptyResponse { ResponseMetadata metadata = 99; }
+
+service MultiService {
+  rpc PingEmpty(Empty) returns (MultiPingReply) {}
+
+  rpc Ping(PingRequest) returns (MultiPingReply) {}
+
+  rpc PingError(PingRequest) returns (EmptyReply) {}
+
+  rpc PingList(PingRequest) returns (stream MultiPingResponse) {}
+
+  rpc PingStream(stream PingRequest) returns (stream MultiPingResponse) {}
+
+  rpc PingStreamError(stream PingRequest) returns (stream MultiPingResponse) {}
+}

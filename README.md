@@ -12,10 +12,13 @@ for one to many proxying added.
 ## Project Goal
 
 Build a transparent reverse proxy for gRPC targets that will make it easy to expose gRPC services
-over the internet. This includes:
- * no needed knowledge of the semantics of requests exchanged in the call (independent rollouts)
- * easy, declarative definition of backends and their mappings to frontends
- * simple round-robin load balancing of inbound requests from a single connection to multiple backends
+over the internet.
+
+This includes:
+
+* no needed knowledge of the semantics of requests exchanged in the call (independent rollouts)
+* easy, declarative definition of backends and their mappings to frontends
+* simple round-robin load balancing of inbound requests from a single connection to multiple backends
 
 ## Proxying Modes
 
@@ -23,15 +26,17 @@ There are two proxying modes supported:
 
 * one to one: in this mode data passed back and forth is transmitted as is without any modifications;
 * one to many: one client connection is mapped into multiple upstream connections, results might be aggregated
-(for unary calls), errors translated into response messages; this mode requires special layout of protobuf messages.
+  (for unary calls), errors translated into response messages; this mode requires special layout of protobuf messages.
 
 ## Proxy Handler
 
 The package [`proxy`](proxy/) contains a generic gRPC reverse proxy handler that allows a gRPC server to
-not know about registered handlers or their data types. Please consult the docs, here's an example usage.
+not know about registered handlers or their data types.
+Please consult the package documentation.
+Here you can find an example usage.
 
-First, define `Backend` implementation to identify specific upstream. For one to one proxying, `SingleBackend`
-might be used:
+First, define `Backend` implementation to identify specific upstream.
+For one to one proxying, `SingleBackend` might be used:
 
 ```go
 backend := &proxy.SingleBackend{
@@ -49,6 +54,7 @@ backend := &proxy.SingleBackend{
 ```
 
 Defining a `StreamDirector` that decides where (if at all) to send the request
+
 ```go
 director = func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
     // Make sure we never forward internal services.
@@ -68,8 +74,9 @@ director = func(ctx context.Context, fullMethodName string) (context.Context, *g
     return nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
 }
 ```
-Then you need to register it with a `grpc.Server`. The server may have other handlers that will be served
-locally:
+
+Then you need to register it with a `grpc.Server`.
+The server may have other handlers that will be served locally:
 
 ```go
 server := grpc.NewServer(
@@ -84,15 +91,16 @@ pb_test.RegisterTestServiceServer(server, &testImpl{})
 ## One to Many Proxying
 
 In one to many proxying mode, it's critical to identify source of each message proxied back from the upstreams.
-Also upstream error shouldn't fail whole request and instead return errors as messages back. In order to achieve
-this goal, protobuf response message should follow the same structure:
+Also upstream error shouldn't fail whole request and instead return errors as messages back.
+In order to achieve this goal, protobuf response message should follow the same structure:
 
-1. Every response should be `repeated` list of response messages, so that responses from multiple upstreams might be
-concatenated to build combined response from all the upstreams.
+1. Every response should be `repeated` list of response messages so that responses from multiple upstreams might be
+concatenated to build a combined response from all the upstreams.
 
 2. Response should contain common metadata fields which allow grpc-proxy to inject source information and error information
 into response.
 
 ## License
 
-`grpc-proxy` is released under the Apache 2.0 license. See [LICENSE.txt](LICENSE.txt).
+`grpc-proxy` is released under the Apache 2.0 license.
+See [LICENSE.txt](LICENSE.txt).

@@ -10,7 +10,6 @@ import (
 	"io"
 
 	"github.com/hashicorp/go-multierror"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,6 +20,7 @@ func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.Serve
 	serverStream = &ServerStreamWrapper{ServerStream: serverStream}
 
 	s2cErrChan := s.forwardServerToClientsMulti(serverStream, backendConnections)
+
 	var c2sErrChan chan error
 
 	if s.options.streamedDetector != nil && s.options.streamedDetector(fullMethodName) {
@@ -32,7 +32,7 @@ func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.Serve
 	for i := 0; i < 2; i++ {
 		select {
 		case s2cErr := <-s2cErrChan:
-			if s2cErr == io.EOF {
+			if errors.Is(s2cErr, io.EOF) {
 				// this is the happy case where the sender has encountered io.EOF, and won't be sending anymore./
 				// the clientStream>serverStream may continue pumping though.
 				for i := range backendConnections {
@@ -40,7 +40,6 @@ func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.Serve
 						backendConnections[i].clientStream.CloseSend() //nolint: errcheck
 					}
 				}
-				break
 			} else {
 				// however, we may have gotten a receive error (stream disconnected, a read error etc) in which case we need
 				// to cancel the clientStream to the backend, let all of its goroutines be freed up by the CancelFunc and
@@ -49,16 +48,18 @@ func (s *handler) handlerOne2Many(fullMethodName string, serverStream grpc.Serve
 			}
 		case c2sErr := <-c2sErrChan:
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
-			if c2sErr != io.EOF {
+			if !errors.Is(c2sErr, io.EOF) {
 				return c2sErr
 			}
+
 			return nil
 		}
 	}
+
 	return status.Errorf(codes.Internal, "gRPC proxying should never reach this stage.")
 }
 
-// formatError tries to format error from upstream as message to the client
+// formatError tries to format error from upstream as message to the client.
 func (s *handler) formatError(streaming bool, src *backendConnection, backendErr error) ([]byte, error) {
 	payload, err := src.backend.BuildError(streaming, backendErr)
 	if err != nil {
@@ -72,17 +73,18 @@ func (s *handler) formatError(streaming bool, src *backendConnection, backendErr
 	return payload, err
 }
 
-// sendError tries to deliver error back to the client via dst
+// sendError tries to deliver error back to the client via dst.
 //
-// if sendError fails to deliver the error, error is returned
-// if sendError successfully delivers the error, nil is returned
+// If sendError fails to deliver the error, error is returned.
+// If sendError successfully delivers the error, nil is returned.
 func (s *handler) sendError(src *backendConnection, dst grpc.ServerStream, backendErr error) error {
 	payload, err := s.formatError(true, src, backendErr)
 	if err != nil {
 		return err
 	}
 
-	f := &frame{payload: payload}
+	f := NewFrame(payload)
+
 	if err = dst.SendMsg(f); err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil
@@ -99,6 +101,7 @@ func (s *handler) sendError(src *backendConnection, dst grpc.ServerStream, backe
 }
 
 // one:many proxying, unary call version (merging results)
+//nolint: gocognit
 func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 
@@ -115,40 +118,50 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 					}
 
 					payloadCh <- payload
+
 					return nil
 				}
 
 				f := &frame{}
+
 				for j := 0; ; j++ {
 					if err := src.clientStream.RecvMsg(f); err != nil {
-						if err == io.EOF {
+						if errors.Is(err, io.EOF) {
 							// This happens when the clientStream has nothing else to offer (io.EOF), returned a gRPC error. In those two
 							// cases we may have received Trailers as part of the call. In case of other errors (stream closed) the trailers
 							// will be nil.
 							dst.SetTrailer(src.clientStream.Trailer())
+
 							return nil
 						}
 
-						payload, err := s.formatError(false, src, err)
+						var payload []byte
+
+						payload, err = s.formatError(false, src, err)
 						if err != nil {
 							return err
 						}
 
 						payloadCh <- payload
+
 						return nil
 					}
+
 					if j == 0 {
 						// This is a bit of a hack, but client to server headers are only readable after first client msg is
 						// received but must be written to server stream before the first msg is flushed.
 						// This is the only place to do it nicely.
 						md, err := src.clientStream.Header()
 						if err != nil {
-							payload, err := s.formatError(false, src, err)
+							var payload []byte
+
+							payload, err = s.formatError(false, src, err)
 							if err != nil {
 								return err
 							}
 
 							payloadCh <- payload
+
 							return nil
 						}
 
@@ -158,6 +171,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 					}
 
 					var err error
+
 					f.payload, err = src.backend.AppendInfo(false, f.payload)
 					if err != nil {
 						return fmt.Errorf("error appending info for %s: %w", src.backend, err)
@@ -178,6 +192,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 
 		if multiErr.ErrorOrNil() != nil {
 			ret <- multiErr.ErrorOrNil()
+
 			return
 		}
 
@@ -188,13 +203,15 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 			merged = append(merged, b...)
 		}
 
-		ret <- dst.SendMsg(&frame{payload: merged})
+		ret <- dst.SendMsg(NewFrame(merged))
 	}()
 
 	return ret
 }
 
-// one:many proxying, streaming version (no merge)
+// one:many proxying, streaming version (no merge).
+//
+//nolint: gocognit
 func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnection, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 
@@ -208,15 +225,18 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 				}
 
 				f := &frame{}
+
 				for j := 0; ; j++ {
 					if err := src.clientStream.RecvMsg(f); err != nil {
-						if err == io.EOF {
+						if errors.Is(err, io.EOF) {
 							// This happens when the clientStream has nothing else to offer (io.EOF), returned a gRPC error. In those two
 							// cases we may have received Trailers as part of the call. In case of other errors (stream closed) the trailers
 							// will be nil.
 							dst.SetTrailer(src.clientStream.Trailer())
+
 							return nil
 						}
+
 						return s.sendError(src, dst, err)
 					}
 					if j == 0 {
@@ -242,7 +262,6 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 						return fmt.Errorf("error sending back to server from %s: %w", src.backend, err)
 					}
 				}
-
 			}()
 		}(&sources[i])
 	}
@@ -262,11 +281,14 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 
 func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destinations []backendConnection) chan error {
 	ret := make(chan error, 1)
+
 	go func() {
-		f := &frame{}
+		f := NewFrame(nil)
+
 		for {
 			if err := src.RecvMsg(f); err != nil {
 				ret <- err
+
 				return
 			}
 
@@ -276,7 +298,7 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 				go func(dst *backendConnection) {
 					errCh <- func() error {
 						if dst.clientStream == nil || dst.connError != nil {
-							return nil // skip it
+							return nil //nolint: nilerr // skip it
 						}
 
 						return dst.clientStream.SendMsg(f)
@@ -285,6 +307,7 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 			}
 
 			liveDestinations := 0
+
 			for range destinations {
 				if err := <-errCh; err == nil {
 					liveDestinations++
@@ -293,9 +316,11 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 
 			if liveDestinations == 0 {
 				ret <- errors.New("no backend connections to forward to are available")
+
 				return
 			}
 		}
 	}()
+
 	return ret
 }

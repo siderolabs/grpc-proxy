@@ -3,8 +3,8 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // Codec returns a proxying grpc.Codec with the default protobuf codec as parent.
@@ -36,13 +36,18 @@ type frame struct {
 	payload []byte
 }
 
+// NewFrame constructs a frame for raw codec.
+func NewFrame(payload []byte) interface{} {
+	return &frame{payload: payload}
+}
+
 func (c *rawCodec) Marshal(v interface{}) ([]byte, error) {
 	out, ok := v.(*frame)
 	if !ok {
 		return c.parentCodec.Marshal(v)
 	}
-	return out.payload, nil
 
+	return out.payload, nil
 }
 
 func (c *rawCodec) Unmarshal(data []byte, v interface{}) error {
@@ -50,7 +55,9 @@ func (c *rawCodec) Unmarshal(data []byte, v interface{}) error {
 	if !ok {
 		return c.parentCodec.Unmarshal(data, v)
 	}
+
 	dst.payload = data
+
 	return nil
 }
 

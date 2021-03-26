@@ -15,13 +15,12 @@ import (
 	"github.com/talos-systems/grpc-proxy/proxy"
 )
 
-var (
-	director proxy.StreamDirector
-)
+var director proxy.StreamDirector
 
 func ExampleRegisterService() {
 	// A gRPC server with the proxying codec enabled.
-	server := grpc.NewServer(grpc.CustomCodec(proxy.Codec()))
+	server := grpc.NewServer(grpc.CustomCodec(proxy.Codec())) //nolint: staticcheck
+
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
 		"talos.testproto.TestService",
@@ -32,7 +31,7 @@ func ExampleRegisterService() {
 
 func ExampleTransparentHandler() {
 	grpc.NewServer(
-		grpc.CustomCodec(proxy.Codec()),
+		grpc.CustomCodec(proxy.Codec()), //nolint: staticcheck
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)))
 }
 
@@ -46,8 +45,8 @@ func ExampleStreamDirector() {
 
 				// Copy the inbound metadata explicitly.
 				outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
-				// Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-				conn, err := grpc.DialContext(ctx, hostname, grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
+				// Make sure we use DialContext so the dialing can be canceled/time out together with the context.
+				conn, err := grpc.DialContext(ctx, hostname, grpc.WithCodec(proxy.Codec())) //nolint: staticcheck
 
 				return outCtx, conn, err
 			},
@@ -59,6 +58,7 @@ func ExampleStreamDirector() {
 		if strings.HasPrefix(fullMethodName, "/com.example.internal.") {
 			return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 		}
+
 		md, ok := metadata.FromIncomingContext(ctx)
 
 		if ok {
@@ -69,6 +69,7 @@ func ExampleStreamDirector() {
 				return proxy.One2One, []proxy.Backend{simpleBackendGen("api-service.prod.svc.local")}, nil
 			}
 		}
+
 		return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 	}
 }
