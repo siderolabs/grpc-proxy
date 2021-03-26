@@ -12,18 +12,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	clientStreamDescForProxying = &grpc.StreamDesc{
-		ServerStreams: true,
-		ClientStreams: true,
-	}
-)
+var clientStreamDescForProxying = &grpc.StreamDesc{
+	ServerStreams: true,
+	ClientStreams: true,
+}
 
 type handlerOptions struct {
-	serviceName      string
-	methodNames      []string
 	streamedMethods  map[string]struct{}
 	streamedDetector StreamedDetectorFunc
+	serviceName      string
+	methodNames      []string
 }
 
 type handler struct {
@@ -85,13 +83,13 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 			return status.Errorf(codes.Internal, "one2one proxying can't should have exactly one connection (got %d)", len(backendConnections))
 		}
 
-		return s.handlerOne2One(fullMethodName, serverStream, backendConnections)
+		return s.handlerOne2One(serverStream, backendConnections)
 	case One2Many:
 		if len(backendConnections) == 0 {
 			return status.Errorf(codes.Unavailable, "no backend connections for proxying")
 		}
-		return s.handlerOne2Many(fullMethodName, serverStream, backendConnections)
 
+		return s.handlerOne2Many(fullMethodName, serverStream, backendConnections)
 	default:
 		return status.Errorf(codes.Internal, "unsupported proxy mode")
 	}

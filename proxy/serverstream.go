@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// ServerStreamWrapper wraps grpc.ServerStream and adds locking to send path
+// ServerStreamWrapper wraps grpc.ServerStream and adds locking to the send path.
 type ServerStreamWrapper struct {
 	grpc.ServerStream
 
@@ -32,6 +32,7 @@ func (wrapper *ServerStreamWrapper) SetHeader(md metadata.MD) error {
 		// hack: swallow grpc.internal.transport.ErrIllegalHeaderWrite
 		err = nil
 	}
+
 	return err
 }
 
@@ -47,6 +48,7 @@ func (wrapper *ServerStreamWrapper) SendHeader(md metadata.MD) error {
 		// hack: swallow grpc.internal.transport.ErrIllegalHeaderWrite
 		err = nil
 	}
+
 	return err
 }
 

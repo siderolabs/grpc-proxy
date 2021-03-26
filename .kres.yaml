@@ -1,0 +1,10 @@
+kind: common.Repository
+spec:
+  conformLicenseCheck: false
+  enableLicense: false
+---
+kind: golang.Protobuf
+spec:
+  baseSpecPath: /testservice
+  specs:
+    - source: testservice/api/test.proto

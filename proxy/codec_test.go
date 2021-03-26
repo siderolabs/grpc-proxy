@@ -1,15 +1,17 @@
-package proxy
+package proxy_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/talos-systems/grpc-proxy/proxy"
 )
 
 func TestCodec_ReadYourWrites(t *testing.T) {
-	framePtr := &frame{}
+	framePtr := proxy.NewFrame(nil)
 	data := []byte{0xDE, 0xAD, 0xBE, 0xEF}
-	codec := rawCodec{}
+	codec := proxy.Codec()
 	require.NoError(t, codec.Unmarshal(data, framePtr), "unmarshalling must go ok")
 	out, err := codec.Marshal(framePtr)
 	require.NoError(t, err, "no marshal error")
@@ -20,5 +22,4 @@ func TestCodec_ReadYourWrites(t *testing.T) {
 	out, err = codec.Marshal(framePtr)
 	require.NoError(t, err, "no marshal error")
 	require.Equal(t, []byte{0x55}, out, "output and data must be the same")
-
 }
