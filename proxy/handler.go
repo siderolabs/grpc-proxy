@@ -45,7 +45,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	// little bit of gRPC internals never hurt anyone
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
-		return status.Errorf(codes.Internal, "lowLevelServerStream not exists in context")
+		return status.Errorf(codes.Internal, "lowLevelServerStream doesn't exist in the context")
 	}
 
 	mode, backends, err := s.director(serverStream.Context(), fullMethodName)
@@ -80,7 +80,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	switch mode {
 	case One2One:
 		if len(backendConnections) != 1 {
-			return status.Errorf(codes.Internal, "one2one proxying can't should have exactly one connection (got %d)", len(backendConnections))
+			return status.Errorf(codes.Internal, "one2one proxying should have exactly one connection (got %d)", len(backendConnections))
 		}
 
 		return s.handlerOne2One(serverStream, backendConnections)
