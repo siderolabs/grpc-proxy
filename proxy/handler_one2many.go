@@ -315,7 +315,7 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 			}
 
 			if liveDestinations == 0 {
-				ret <- errors.New("no backend connections to forward to are available")
+				ret <- io.EOF
 
 				return
 			}
