@@ -247,9 +247,8 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 						if err != nil {
 							return s.sendError(src, dst, err)
 						}
-						if err := dst.SetHeader(md); err != nil {
-							return fmt.Errorf("error setting headers from client %s: %w", src.backend, err)
-						}
+
+						dst.SetHeader(md) //nolint:errcheck // ignore errors, as we might try to set headers multiple times
 					}
 
 					var err error
@@ -298,7 +297,7 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 				go func(dst *backendConnection) {
 					errCh <- func() error {
 						if dst.clientStream == nil || dst.connError != nil {
-							return nil //nolint: nilerr // skip it
+							return nil // skip it
 						}
 
 						return dst.clientStream.SendMsg(f)

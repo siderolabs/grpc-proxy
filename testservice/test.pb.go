@@ -7,11 +7,12 @@
 package talos_testproto
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -596,18 +597,20 @@ func file_test_proto_rawDescGZIP() []byte {
 	return file_test_proto_rawDescData
 }
 
-var file_test_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_test_proto_goTypes = []interface{}{
-	(*Empty)(nil),                     // 0: talos.testproto.Empty
-	(*PingRequest)(nil),               // 1: talos.testproto.PingRequest
-	(*PingResponse)(nil),              // 2: talos.testproto.PingResponse
-	(*ResponseMetadata)(nil),          // 3: talos.testproto.ResponseMetadata
-	(*ResponseMetadataPrepender)(nil), // 4: talos.testproto.ResponseMetadataPrepender
-	(*MultiPingResponse)(nil),         // 5: talos.testproto.MultiPingResponse
-	(*MultiPingReply)(nil),            // 6: talos.testproto.MultiPingReply
-	(*EmptyReply)(nil),                // 7: talos.testproto.EmptyReply
-	(*EmptyResponse)(nil),             // 8: talos.testproto.EmptyResponse
-}
+var (
+	file_test_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+	file_test_proto_goTypes  = []interface{}{
+		(*Empty)(nil),                     // 0: talos.testproto.Empty
+		(*PingRequest)(nil),               // 1: talos.testproto.PingRequest
+		(*PingResponse)(nil),              // 2: talos.testproto.PingResponse
+		(*ResponseMetadata)(nil),          // 3: talos.testproto.ResponseMetadata
+		(*ResponseMetadataPrepender)(nil), // 4: talos.testproto.ResponseMetadataPrepender
+		(*MultiPingResponse)(nil),         // 5: talos.testproto.MultiPingResponse
+		(*MultiPingReply)(nil),            // 6: talos.testproto.MultiPingReply
+		(*EmptyReply)(nil),                // 7: talos.testproto.EmptyReply
+		(*EmptyResponse)(nil),             // 8: talos.testproto.EmptyResponse
+	}
+)
 var file_test_proto_depIdxs = []int32{
 	3,  // 0: talos.testproto.ResponseMetadataPrepender.metadata:type_name -> talos.testproto.ResponseMetadata
 	3,  // 1: talos.testproto.MultiPingResponse.metadata:type_name -> talos.testproto.ResponseMetadata

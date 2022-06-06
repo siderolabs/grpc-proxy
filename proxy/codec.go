@@ -12,7 +12,7 @@ import (
 // See CodecWithParent.
 //
 //nolint: staticcheck
-func Codec() grpc.Codec {
+func Codec() grpc.Codec { //nolint:ireturn
 	return CodecWithParent(&protoCodec{})
 }
 
@@ -24,7 +24,7 @@ func Codec() grpc.Codec {
 // to trying to decode the message using a fallback codec.
 //
 //nolint: staticcheck
-func CodecWithParent(fallback grpc.Codec) grpc.Codec {
+func CodecWithParent(fallback grpc.Codec) grpc.Codec { //nolint:ireturn
 	return &rawCodec{fallback}
 }
 
@@ -69,11 +69,11 @@ func (c *rawCodec) String() string {
 type protoCodec struct{}
 
 func (protoCodec) Marshal(v interface{}) ([]byte, error) {
-	return proto.Marshal(v.(proto.Message))
+	return proto.Marshal(v.(proto.Message)) //nolint:forcetypeassert
 }
 
 func (protoCodec) Unmarshal(data []byte, v interface{}) error {
-	return proto.Unmarshal(data, v.(proto.Message))
+	return proto.Unmarshal(data, v.(proto.Message)) //nolint:forcetypeassert
 }
 
 func (protoCodec) String() string {

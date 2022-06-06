@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -232,7 +233,7 @@ type ProxyOne2ManySuite struct { //nolint: govet
 	client     *grpc.ClientConn
 	testClient pb.MultiServiceClient
 
-	ctx       context.Context
+	ctx       context.Context //nolint:containedctx
 	ctxCancel context.CancelFunc
 }
 
@@ -654,7 +655,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer ctxCancel()
 
-	clientConn, err := grpc.DialContext(ctx, strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1), grpc.WithInsecure())
+	clientConn, err := grpc.DialContext(ctx, strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 	s.testClient = pb.NewMultiServiceClient(clientConn)
 }

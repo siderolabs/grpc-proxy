@@ -4,6 +4,7 @@ package talos_testproto
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -136,21 +137,24 @@ type TestServiceServer interface {
 }
 
 // UnimplementedTestServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedTestServiceServer struct {
-}
+type UnimplementedTestServiceServer struct{}
 
 func (UnimplementedTestServiceServer) PingEmpty(context.Context, *Empty) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingEmpty not implemented")
 }
+
 func (UnimplementedTestServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
+
 func (UnimplementedTestServiceServer) PingError(context.Context, *PingRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingError not implemented")
 }
+
 func (UnimplementedTestServiceServer) PingList(*PingRequest, TestService_PingListServer) error {
 	return status.Errorf(codes.Unimplemented, "method PingList not implemented")
 }
+
 func (UnimplementedTestServiceServer) PingStream(TestService_PingStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method PingStream not implemented")
 }
@@ -459,24 +463,28 @@ type MultiServiceServer interface {
 }
 
 // UnimplementedMultiServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedMultiServiceServer struct {
-}
+type UnimplementedMultiServiceServer struct{}
 
 func (UnimplementedMultiServiceServer) PingEmpty(context.Context, *Empty) (*MultiPingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingEmpty not implemented")
 }
+
 func (UnimplementedMultiServiceServer) Ping(context.Context, *PingRequest) (*MultiPingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
+
 func (UnimplementedMultiServiceServer) PingError(context.Context, *PingRequest) (*EmptyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingError not implemented")
 }
+
 func (UnimplementedMultiServiceServer) PingList(*PingRequest, MultiService_PingListServer) error {
 	return status.Errorf(codes.Unimplemented, "method PingList not implemented")
 }
+
 func (UnimplementedMultiServiceServer) PingStream(MultiService_PingStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method PingStream not implemented")
 }
+
 func (UnimplementedMultiServiceServer) PingStreamError(MultiService_PingStreamErrorServer) error {
 	return status.Errorf(codes.Unimplemented, "method PingStreamError not implemented")
 }

@@ -1,12 +1,16 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-25T21:16:46Z by kres 424ae88-dirty.
+# Generated on 2022-06-06T17:35:55Z by kres 65530e7.
 
+---
 policies:
 - type: commit
   spec:
     dco: true
-    gpg: false
+    gpg:
+      required: true
+      identity:
+        gitHubOrganization: siderolabs
     spellcheck:
       locale: US
     maximumOfOneCommit: true
@@ -19,4 +23,4 @@ policies:
       required: true
     conventional:
       types: ["chore","docs","perf","refactor","style","test","release"]
-      scopes: ["*"]
+      scopes: [".*"]
