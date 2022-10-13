@@ -27,7 +27,7 @@ type Backend interface {
 	// The context returned from this function should be the context for the *outgoing* (to backend) call. In case you want
 	// to forward any Metadata between the inbound request and outbound requests, you should do it manually. However, you
 	// *must* propagate the cancel function (`context.WithCancel`) of the inbound context to the one returned.
-	GetConnection(ctx context.Context) (context.Context, *grpc.ClientConn, error)
+	GetConnection(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error)
 
 	// AppendInfo is called to enhance response from the backend with additional data.
 	//
@@ -71,7 +71,7 @@ func (sb *SingleBackend) String() string {
 }
 
 // GetConnection returns a grpc connection to the backend.
-func (sb *SingleBackend) GetConnection(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
+func (sb *SingleBackend) GetConnection(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
 	return sb.GetConn(ctx)
 }
 
@@ -88,11 +88,11 @@ func (sb *SingleBackend) BuildError(streaming bool, err error) ([]byte, error) {
 // StreamDirector returns a list of Backend objects to forward the call to.
 //
 // There are two proxying modes:
-//   1. one to one: StreamDirector returns a single Backend object - proxying is done verbatim, Backend.AppendInfo might
-//      be used to enhance response with source information (or it might be skipped).
-//   2. one to many: StreamDirector returns more than one Backend object - for unary calls responses from Backend objects
-//      are aggregated by concatenating protobuf responses (requires top-level `repeated` protobuf definition) and errors
-//      are wrapped as responses via BuildError. Responses are potentially enhanced via AppendInfo.
+//  1. one to one: StreamDirector returns a single Backend object - proxying is done verbatim, Backend.AppendInfo might
+//     be used to enhance response with source information (or it might be skipped).
+//  2. one to many: StreamDirector returns more than one Backend object - for unary calls responses from Backend objects
+//     are aggregated by concatenating protobuf responses (requires top-level `repeated` protobuf definition) and errors
+//     are wrapped as responses via BuildError. Responses are potentially enhanced via AppendInfo.
 //
 // The presence of the `Context` allows for rich filtering, e.g. based on Metadata (headers).
 // If no handling is meant to be done, a `codes.NotImplemented` gRPC error should be returned.

@@ -152,7 +152,7 @@ func (b *assertingBackend) String() string {
 	return fmt.Sprintf("backend%d", b.i)
 }
 
-func (b *assertingBackend) GetConnection(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
+func (b *assertingBackend) GetConnection(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
 	// Explicitly copy the metadata, otherwise the tests will fail.
 	outCtx := metadata.NewOutgoingContext(ctx, md.Copy())

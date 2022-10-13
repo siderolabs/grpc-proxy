@@ -63,7 +63,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 
 		// We require that the backend's returned context inherits from the serverStream.Context().
 		var outgoingCtx context.Context
-		outgoingCtx, backendConnections[i].backendConn, backendConnections[i].connError = backends[i].GetConnection(clientCtx)
+		outgoingCtx, backendConnections[i].backendConn, backendConnections[i].connError = backends[i].GetConnection(clientCtx, fullMethodName)
 
 		if backendConnections[i].connError != nil {
 			continue
