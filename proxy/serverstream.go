@@ -17,12 +17,14 @@ type ServerStreamWrapper struct {
 	sendMu sync.Mutex
 }
 
-// SetHeader sets the header metadata. It may be called multiple times.
+// SetHeader sets the header metadata.
+//
+// It may be called multiple times.
 // When call multiple times, all the provided metadata will be merged.
 // All the metadata will be sent out when one of the following happens:
-//  - ServerStream.SendHeader() is called;
-//  - The first response is sent out;
-//  - An RPC status is sent out (error or success).
+//   - ServerStream.SendHeader() is called;
+//   - The first response is sent out;
+//   - An RPC status is sent out (error or success).
 func (wrapper *ServerStreamWrapper) SetHeader(md metadata.MD) error {
 	wrapper.sendMu.Lock()
 	defer wrapper.sendMu.Unlock()

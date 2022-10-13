@@ -12,11 +12,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/talos-systems/grpc-proxy/proxy"
+	"github.com/siderolabs/grpc-proxy/proxy"
 )
 
 var director proxy.StreamDirector
 
+// ExampleRegisterService is a simple example of registering a service with the proxy.
 func ExampleRegisterService() {
 	// A gRPC server with the proxying codec enabled.
 	server := grpc.NewServer(grpc.CustomCodec(proxy.Codec())) //nolint: staticcheck
@@ -27,12 +28,17 @@ func ExampleRegisterService() {
 		proxy.WithMethodNames("PingEmpty", "Ping", "PingError", "PingList"),
 		proxy.WithStreamedMethodNames("PingList"),
 	)
+
+	// Output:
 }
 
+// ExampleTransparentHandler is an example of redirecting all requests to the proxy.
 func ExampleTransparentHandler() {
 	grpc.NewServer(
 		grpc.CustomCodec(proxy.Codec()), //nolint: staticcheck
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)))
+
+	// Output:
 }
 
 // Provide sa simple example of a director that shields internal services and dials a staging or production backend.
@@ -72,4 +78,6 @@ func ExampleStreamDirector() {
 
 		return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 	}
+
+	// Output:
 }

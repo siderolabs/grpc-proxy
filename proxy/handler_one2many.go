@@ -100,8 +100,9 @@ func (s *handler) sendError(src *backendConnection, dst grpc.ServerStream, backe
 	return nil
 }
 
-// one:many proxying, unary call version (merging results)
-//nolint: gocognit
+// forwardClientsToServerMultiUnary handles one:many proxying, unary call version (merging results)
+//
+//nolint:gocognit
 func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 
@@ -211,7 +212,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 
 // one:many proxying, streaming version (no merge).
 //
-//nolint: gocognit
+//nolint:gocognit
 func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnection, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 
@@ -297,7 +298,7 @@ func (s *handler) forwardServerToClientsMulti(src grpc.ServerStream, destination
 				go func(dst *backendConnection) {
 					errCh <- func() error {
 						if dst.clientStream == nil || dst.connError != nil {
-							return nil // skip it
+							return nil //nolint:nilerr // skip it
 						}
 
 						return dst.clientStream.SendMsg(f)

@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-06-06T17:35:55Z by kres 65530e7.
+# Generated on 2022-10-13T11:49:36Z by kres latest.
 
 # options for analysis running
 run:
@@ -36,7 +36,7 @@ linters-settings:
     lines: 60
     statements: 40
   gci:
-    local-prefixes: github.com/talos-systems/grpc-proxy
+    local-prefixes: github.com/siderolabs/grpc-proxy
   gocognit:
     min-complexity: 30
   ireturn:
@@ -65,7 +65,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: github.com/talos-systems/grpc-proxy
+    local-prefixes: github.com/siderolabs/grpc-proxy
   golint:
     min-confidence: 0.8
   gomnd:
@@ -135,9 +135,11 @@ linters:
     - goerr113
     - gomnd
     - gomoddirectives
+    - ireturn
     - nestif
+    - nonamedreturns
+    - nosnakecase
     - paralleltest
-    - promlinter
     - tagliatelle
     - thelper
     - typecheck
@@ -148,6 +150,7 @@ linters:
     - maligned
     - golint
     - scopelint
+    - promlinter
 
 issues:
   exclude: []

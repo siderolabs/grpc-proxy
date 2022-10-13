@@ -30,8 +30,8 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/talos-systems/grpc-proxy/proxy"
-	pb "github.com/talos-systems/grpc-proxy/testservice"
+	"github.com/siderolabs/grpc-proxy/proxy"
+	pb "github.com/siderolabs/grpc-proxy/testservice"
 )
 
 const (
@@ -460,7 +460,7 @@ func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexWorks() {
 	assert.Len(s.T(), trailerMd, 1, "PingList trailer headers user contain metadata")
 }
 
-//nolint: gocognit
+//nolint:gocognit
 func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexConcurrent() {
 	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
@@ -544,7 +544,7 @@ func (s *ProxyOne2ManySuite) TearDownTest() {
 	s.ctxCancel()
 }
 
-//nolint: gocognit
+//nolint:gocognit
 func (s *ProxyOne2ManySuite) SetupSuite() {
 	var err error
 

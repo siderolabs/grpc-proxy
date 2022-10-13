@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/talos-systems/grpc-proxy/proxy"
-	pb "github.com/talos-systems/grpc-proxy/testservice"
+	"github.com/siderolabs/grpc-proxy/proxy"
+	pb "github.com/siderolabs/grpc-proxy/testservice"
 )
 
 const (

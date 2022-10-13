@@ -11,7 +11,7 @@ import (
 //
 // See CodecWithParent.
 //
-//nolint: staticcheck
+//nolint:staticcheck
 func Codec() grpc.Codec { //nolint:ireturn
 	return CodecWithParent(&protoCodec{})
 }
@@ -23,7 +23,7 @@ func Codec() grpc.Codec { //nolint:ireturn
 // However, if the server handler, or the client caller are not proxy-internal functions it will fall back
 // to trying to decode the message using a fallback codec.
 //
-//nolint: staticcheck
+//nolint:staticcheck
 func CodecWithParent(fallback grpc.Codec) grpc.Codec { //nolint:ireturn
 	return &rawCodec{fallback}
 }
