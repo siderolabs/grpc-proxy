@@ -30,8 +30,8 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/siderolabs/grpc-proxy/proxy"
-	pb "github.com/siderolabs/grpc-proxy/testservice"
+	"github.com/noncepad/grpc-proxy/proxy"
+	pb "github.com/noncepad/grpc-proxy/testservice"
 )
 
 const (

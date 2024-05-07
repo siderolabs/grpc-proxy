@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/siderolabs/grpc-proxy/proxy"
+	"github.com/noncepad/grpc-proxy/proxy"
 )
 
 func TestCodec_ReadYourWrites(t *testing.T) {
