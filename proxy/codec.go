@@ -32,17 +32,21 @@ type rawCodec struct {
 	parentCodec grpc.Codec //nolint: staticcheck
 }
 
-type frame struct {
+type Frame struct {
 	payload []byte
+}
+
+func (f *Frame) Size() int {
+	return len(f.payload)
 }
 
 // NewFrame constructs a frame for raw codec.
 func NewFrame(payload []byte) interface{} {
-	return &frame{payload: payload}
+	return &Frame{payload: payload}
 }
 
 func (c *rawCodec) Marshal(v interface{}) ([]byte, error) {
-	out, ok := v.(*frame)
+	out, ok := v.(*Frame)
 	if !ok {
 		return c.parentCodec.Marshal(v)
 	}
@@ -51,7 +55,7 @@ func (c *rawCodec) Marshal(v interface{}) ([]byte, error) {
 }
 
 func (c *rawCodec) Unmarshal(data []byte, v interface{}) error {
-	dst, ok := v.(*frame)
+	dst, ok := v.(*Frame)
 	if !ok {
 		return c.parentCodec.Unmarshal(data, v)
 	}
