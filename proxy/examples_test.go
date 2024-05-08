@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/noncepad/grpc-proxy/proxy"
+	"github.com/siderolabs/grpc-proxy/proxy"
 )
 
 var director proxy.StreamDirector

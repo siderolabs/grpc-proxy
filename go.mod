@@ -1,4 +1,4 @@
-module github.com/noncepad/grpc-proxy
+module github.com/siderolabs/grpc-proxy
 
 go 1.19
 
