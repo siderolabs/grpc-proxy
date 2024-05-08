@@ -1,19 +1,81 @@
+# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
+#
+# Generated on 2024-05-08T13:34:33Z by kres 1e986af.
+
 name: default
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 "on":
   push:
     branches:
       - main
+      - release-*
     tags:
       - v*
-  pull_request: {}
-env:
-  CI_ARGS: --cache-from=type=registry,ref=registry.dev.siderolabs.io/${GITHUB_REPOSITORY}:buildcache --cache-to=type=registry,ref=registry.dev.siderolabs.io/${GITHUB_REPOSITORY}:buildcache,mode=max
+  pull_request:
+    branches:
+      - main
+      - release-*
 jobs:
   default:
     permissions:
+      actions: read
       contents: write
+      issues: read
       packages: write
-    runs-on: self-hosted
+      pull-requests: read
+    runs-on:
+      - self-hosted
+      - generic
+    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
+    services:
+      buildkitd:
+        image: moby/buildkit:v0.13.2
+        options: --privileged
+        ports:
+          - 1234:1234
+        volumes:
+          - /var/lib/buildkit/${{ github.repository }}:/var/lib/buildkit
+          - /usr/etc/buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Unshallow
+        run: |
+          git fetch --prune --unshallow
+      - name: Set up Docker Buildx
+        id: setup-buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://127.0.0.1:1234
+        timeout-minutes: 10
+      - name: base
+        run: |
+          make base
+      - name: unit-tests
+        run: |
+          make unit-tests
+      - name: unit-tests-race
+        run: |
+          make unit-tests-race
+      - name: coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: _out/coverage-unit-tests.txt
+          token: ${{ secrets.CODECOV_TOKEN }}
+        timeout-minutes: 3
+      - name: lint
+        run: |
+          make lint
+      - name: release-notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          make release-notes
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: crazy-max/ghaction-github-release@v2
+        with:
+          body_path: _out/RELEASE_NOTES.md
+          draft: "true"

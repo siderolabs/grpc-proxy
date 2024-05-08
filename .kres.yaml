@@ -1,9 +1,11 @@
 kind: common.Repository
 spec:
   conformLicenseCheck: false
-  enableLicense: false
+  licenses:
+    - enabled: false
+  licenseChecks: []
 ---
-kind: golang.Protobuf
+kind: golang.Generate
 spec:
   baseSpecPath: /testservice
   specs:

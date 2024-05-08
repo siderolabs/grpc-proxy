@@ -25,7 +25,7 @@ func (s *handler) handlerOne2One(serverStream grpc.ServerStream, backendConnecti
 	s2cErrChan := s.forwardServerToClient(serverStream, &backendConnections[0])
 	c2sErrChan := s.forwardClientToServer(&backendConnections[0], serverStream)
 	// We don't know which side is going to stop sending first, so we need a select between the two.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case s2cErr := <-s2cErrChan:
 			if errors.Is(s2cErr, io.EOF) {

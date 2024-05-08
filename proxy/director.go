@@ -71,17 +71,17 @@ func (sb *SingleBackend) String() string {
 }
 
 // GetConnection returns a grpc connection to the backend.
-func (sb *SingleBackend) GetConnection(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
+func (sb *SingleBackend) GetConnection(ctx context.Context, _ string) (context.Context, *grpc.ClientConn, error) {
 	return sb.GetConn(ctx)
 }
 
 // AppendInfo is called to enhance response from the backend with additional data.
-func (sb *SingleBackend) AppendInfo(streaming bool, resp []byte) ([]byte, error) {
+func (sb *SingleBackend) AppendInfo(_ bool, resp []byte) ([]byte, error) {
 	return resp, nil
 }
 
 // BuildError is called to convert error from upstream into response field.
-func (sb *SingleBackend) BuildError(streaming bool, err error) ([]byte, error) {
+func (sb *SingleBackend) BuildError(bool, error) ([]byte, error) {
 	return nil, nil
 }
 

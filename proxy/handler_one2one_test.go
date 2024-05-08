@@ -63,7 +63,7 @@ func (s *assertingService) Ping(ctx context.Context, ping *pb.PingRequest) (*pb.
 	return &pb.PingResponse{Value: ping.Value, Counter: 42}, nil
 }
 
-func (s *assertingService) PingError(ctx context.Context, ping *pb.PingRequest) (*pb.Empty, error) {
+func (s *assertingService) PingError(context.Context, *pb.PingRequest) (*pb.Empty, error) {
 	return nil, status.Errorf(codes.FailedPrecondition, "Userspace error.")
 }
 
@@ -71,7 +71,7 @@ func (s *assertingService) PingList(ping *pb.PingRequest, stream pb.TestService_
 	// Send user trailers and headers.
 	stream.SendHeader(metadata.Pairs(serverHeaderMdKey, "I like turtles.")) //nolint: errcheck
 
-	for i := 0; i < countListResponses; i++ {
+	for i := range countListResponses {
 		stream.Send(&pb.PingResponse{Value: ping.Value, Counter: int32(i)}) //nolint: errcheck
 	}
 
@@ -142,7 +142,7 @@ func (s *ProxyOne2OneSuite) TestPingEmptyCarriesClientMetadata() {
 }
 
 func (s *ProxyOne2OneSuite) TestPingEmpty_StressTest() {
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		s.TestPingEmptyCarriesClientMetadata()
 	}
 }
@@ -178,7 +178,7 @@ func (s *ProxyOne2OneSuite) TestPingStream_FullDuplexWorks() {
 	stream, err := s.testClient.PingStream(s.ctx)
 	require.NoError(s.T(), err, "PingStream request should be successful.")
 
-	for i := 0; i < countListResponses; i++ {
+	for i := range countListResponses {
 		ping := &pb.PingRequest{Value: fmt.Sprintf("foo:%d", i)}
 		require.NoError(s.T(), stream.Send(ping), "sending to PingStream must not fail")
 
@@ -199,6 +199,7 @@ func (s *ProxyOne2OneSuite) TestPingStream_FullDuplexWorks() {
 
 		assert.EqualValues(s.T(), i, resp.Counter, "ping roundtrip must succeed with the correct id")
 	}
+
 	require.NoError(s.T(), stream.CloseSend(), "no error on close send")
 	_, err = stream.Recv()
 	require.Equal(s.T(), io.EOF, err, "stream should close with io.EOF, meaining OK")
@@ -208,7 +209,7 @@ func (s *ProxyOne2OneSuite) TestPingStream_FullDuplexWorks() {
 }
 
 func (s *ProxyOne2OneSuite) TestPingStream_StressTest() {
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		s.TestPingStream_FullDuplexWorks()
 	}
 }
@@ -228,7 +229,7 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	s.serverClientConn, err = grpc.Dial(s.serverListener.Addr().String(), grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) //nolint: staticcheck
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 
-	director := func(ctx context.Context, fullName string) (proxy.Mode, []proxy.Backend, error) {
+	director := func(ctx context.Context, _ string) (proxy.Mode, []proxy.Backend, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			if _, exists := md[rejectingMdKey]; exists {
