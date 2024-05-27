@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-05-08T13:34:33Z by kres 1e986af.
+# Generated on 2024-05-27T14:20:35Z by kres b5844f8.
 
 # options for analysis running
 run:
@@ -35,7 +35,7 @@ linters-settings:
     sections:
       - standard # Standard section: captures all standard packages.
       - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(github.com/siderolabs/grpc-proxy/) # Custom section: groups all imports with the specified Prefix.
+      - localmodule # Imports from the same module.
   gocognit:
     min-complexity: 30
   nestif:
@@ -51,8 +51,6 @@ linters-settings:
     scope: declarations
   gofmt:
     simplify: true
-  goimports:
-    local-prefixes: github.com/siderolabs/grpc-proxy/
   gomodguard: { }
   govet:
     enable-all: true
@@ -145,6 +143,7 @@ linters:
     - varcheck
     # disabled as it seems to be broken - goes into imported libraries and reports issues there
     - musttag
+    - goimports # same as gci
 
 issues:
   exclude: [ ]

@@ -654,10 +654,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 		s.proxy.Serve(s.proxyListener) //nolint: errcheck
 	}()
 
-	ctx, ctxCancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer ctxCancel()
-
-	clientConn, err := grpc.DialContext(ctx, strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	clientConn, err := grpc.NewClient(strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 	s.testClient = pb.NewMultiServiceClient(clientConn)
 }
