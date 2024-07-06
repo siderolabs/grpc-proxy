@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -141,11 +139,7 @@ func (s *assertingMultiService) PingStreamError(pb.MultiService_PingStreamErrorS
 
 type assertingBackend struct {
 	conn *grpc.ClientConn
-
-	addr string
 	i    int
-
-	mu sync.Mutex
 }
 
 func (b *assertingBackend) String() string {
@@ -157,21 +151,11 @@ func (b *assertingBackend) GetConnection(ctx context.Context, _ string) (context
 	// Explicitly copy the metadata, otherwise the tests will fail.
 	outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
 
-	if b.addr == "fail" {
+	if b.conn == nil {
 		return ctx, nil, status.Error(codes.Unavailable, "backend connection failed")
 	}
 
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if b.conn != nil {
-		return outCtx, b.conn, nil
-	}
-
-	var err error
-	b.conn, err = grpc.DialContext(ctx, b.addr, grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) //nolint: staticcheck
-
-	return outCtx, b.conn, err
+	return outCtx, b.conn, nil
 }
 
 func (b *assertingBackend) AppendInfo(streaming bool, resp []byte) ([]byte, error) {
@@ -574,15 +558,23 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 	backends := make([]*assertingBackend, numUpstreams)
 
 	for i := range backends {
+		var conn *grpc.ClientConn
+		conn, err = grpc.NewClient(
+			s.serverListeners[i].Addr().String(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+		)
+		require.NoError(s.T(), err)
+
 		backends[i] = &assertingBackend{
+			conn: conn,
 			i:    i,
-			addr: s.serverListeners[i].Addr().String(),
 		}
 	}
 
 	failingBackend := &assertingBackend{
+		conn: nil,
 		i:    -1,
-		addr: "fail",
 	}
 
 	// Setup of the proxy's Director.
@@ -629,7 +621,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 	}
 
 	s.proxy = grpc.NewServer(
-		grpc.CustomCodec(proxy.Codec()), //nolint: staticcheck
+		grpc.ForceServerCodec(proxy.Codec()),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
@@ -694,5 +686,5 @@ func TestProxyOne2ManySuite(t *testing.T) {
 }
 
 func init() {
-	grpclog.SetLogger(log.New(os.Stderr, "grpc: ", log.LstdFlags)) //nolint: staticcheck
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 }

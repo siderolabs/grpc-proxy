@@ -226,7 +226,11 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	pb.RegisterTestServiceServer(s.server, &assertingService{t: s.T()})
 
 	// Setup of the proxy's Director.
-	s.serverClientConn, err = grpc.NewClient(s.serverListener.Addr().String(), grpc.WithInsecure(), grpc.WithCodec(proxy.Codec())) //nolint: staticcheck
+	s.serverClientConn, err = grpc.NewClient(
+		s.serverListener.Addr().String(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+	)
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 
 	director := func(ctx context.Context, _ string) (proxy.Mode, []proxy.Backend, error) {
@@ -251,7 +255,7 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	}
 
 	s.proxy = grpc.NewServer(
-		grpc.CustomCodec(proxy.Codec()), //nolint: staticcheck
+		grpc.ForceServerCodec(proxy.Codec()),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 
@@ -274,7 +278,10 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 		s.proxy.Serve(s.proxyListener) //nolint: errcheck
 	}()
 
-	clientConn, err := grpc.NewClient(strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	clientConn, err := grpc.NewClient(
+		strings.Replace(s.proxyListener.Addr().String(), "127.0.0.1", "localhost", 1),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 	s.testClient = pb.NewTestServiceClient(clientConn)
 }

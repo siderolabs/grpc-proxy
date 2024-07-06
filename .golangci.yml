@@ -94,17 +94,19 @@ linters-settings:
   cyclop:
     # the maximal code complexity to report
     max-complexity: 20
-  #  depguard:
-  #    Main:
-  #      deny:
-  #        - github.com/OpenPeeDeeP/depguard # this is just an example
+  # depguard:
+  #   rules:
+  #     Main:
+  #       list-mode: lax
+  #       deny:
+  #         - pkg: github.com/OpenPeeDeeP/depguard
+  #           desc: this is just an example
 
 linters:
   enable-all: true
   disable-all: false
   fast: false
   disable:
-    - exhaustivestruct
     - exhaustruct
     - err113
     - forbidigo
@@ -120,7 +122,6 @@ linters:
     - mnd
     - nestif
     - nonamedreturns
-    - nosnakecase
     - paralleltest
     - tagalign
     - tagliatelle
@@ -128,19 +129,12 @@ linters:
     - typecheck
     - varnamelen
     - wrapcheck
-    - depguard # Disabled because starting with golangci-lint 1.53.0 it doesn't allow denylist alone anymore
+    - depguard # an Allow and/or Deny package list must be configured
     - testifylint # complains about our assert recorder and has a number of false positives for assert.Greater(t, thing, 1)
     - protogetter # complains about us using Value field on typed spec, instead of GetValue which has a different signature
     - perfsprint # complains about us using fmt.Sprintf in non-performance critical code, updating just kres took too long
     # abandoned linters for which golangci shows the warning that the repo is archived by the owner
-    - deadcode
-    - golint
-    - ifshort
-    - interfacer
-    - maligned
-    - scopelint
-    - structcheck
-    - varcheck
+    - execinquery
     # disabled as it seems to be broken - goes into imported libraries and reports issues there
     - musttag
     - goimports # same as gci

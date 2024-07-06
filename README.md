@@ -36,16 +36,22 @@ First, define `Backend` implementation to identify specific upstream.
 For one to one proxying, `SingleBackend` might be used:
 
 ```go
+conn, err := grpc.NewClient(
+    "api-service.staging.svc.local",
+    grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
 backend := &proxy.SingleBackend{
     GetConn: func(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
         md, _ := metadata.FromIncomingContext(ctx)
 
         // Copy the inbound metadata explicitly.
         outCtx := metadata.NewOutgoingContext(ctx, md.Copy())
-        // Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-        conn, err := grpc.DialContext(ctx, "api-service.staging.svc.local", grpc.WithCodec(proxy.Codec())) // nolint: staticcheck
 
-        return outCtx, conn, err
+        return outCtx, conn, nil
     },
 }
 ```
@@ -53,22 +59,24 @@ backend := &proxy.SingleBackend{
 Defining a `StreamDirector` that decides where (if at all) to send the request
 
 ```go
-director = func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
+director = func(ctx context.Context, fullMethodName string) (proxy.Mode, []proxy.Backend, error) {
     // Make sure we never forward internal services.
     if strings.HasPrefix(fullMethodName, "/com.example.internal.") {
-        return nil, nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
+        return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
     }
-    md, ok := metadata.FromContext(ctx)
+
+    md, ok := metadata.FromIncomingContext(ctx)
+
     if ok {
         // Decide on which backend to dial
         if val, exists := md[":authority"]; exists && val[0] == "staging.api.example.com" {
-            // Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-            return ctx, backend1, nil
+            return proxy.One2One, []proxy.Backend{stagingBackend}, nil
         } else if val, exists := md[":authority"]; exists && val[0] == "api.example.com" {
-            return ctx, backend2, nil
+            return proxy.One2One, []proxy.Backend{prodBackend}, nil
         }
     }
-    return nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
+
+    return proxy.One2One, nil, status.Errorf(codes.Unimplemented, "Unknown method")
 }
 ```
 
@@ -77,7 +85,7 @@ The server may have other handlers that will be served locally:
 
 ```go
 server := grpc.NewServer(
-    grpc.CustomCodec(proxy.Codec()),
+    grpc.ForceServerCodec(proxy.Codec()),
     grpc.UnknownServiceHandler(
         proxy.TransparentHandler(director),
         proxy.WithMode(proxy.One2One),
