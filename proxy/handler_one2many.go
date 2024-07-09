@@ -123,7 +123,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 					return nil
 				}
 
-				f := &frame{}
+				f := &Frame{}
 
 				for j := 0; ; j++ {
 					if err := src.clientStream.RecvMsg(f); err != nil {
@@ -225,7 +225,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 					return s.sendError(src, dst, src.connError)
 				}
 
-				f := &frame{}
+				f := &Frame{}
 
 				for j := 0; ; j++ {
 					if err := src.clientStream.RecvMsg(f); err != nil {
