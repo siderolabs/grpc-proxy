@@ -22,7 +22,7 @@ var director proxy.StreamDirector
 // ExampleRegisterService is a simple example of registering a service with the proxy.
 func ExampleRegisterService() {
 	// A gRPC server with the proxying codec enabled.
-	server := grpc.NewServer(grpc.ForceServerCodec(proxy.Codec()))
+	server := grpc.NewServer(grpc.ForceServerCodecV2(proxy.Codec()))
 
 	// Register a TestService with 4 of its methods explicitly.
 	proxy.RegisterService(server, director,
@@ -37,7 +37,7 @@ func ExampleRegisterService() {
 // ExampleTransparentHandler is an example of redirecting all requests to the proxy.
 func ExampleTransparentHandler() {
 	grpc.NewServer(
-		grpc.ForceServerCodec(proxy.Codec()),
+		grpc.ForceServerCodecV2(proxy.Codec()),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 
@@ -50,7 +50,7 @@ func ExampleStreamDirector() {
 	simpleBackendGen := func(hostname string) (proxy.Backend, error) {
 		conn, err := grpc.NewClient(
 			hostname,
-			grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+			grpc.WithDefaultCallOptions(grpc.ForceCodecV2(proxy.Codec())),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {

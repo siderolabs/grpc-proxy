@@ -77,7 +77,7 @@ func (wrapper *ServerStreamWrapper) SetTrailer(md metadata.MD) {
 // It is safe to have a goroutine calling SendMsg and another goroutine
 // calling RecvMsg on the same stream at the same time, but it is not safe
 // to call SendMsg on the same stream in different goroutines.
-func (wrapper *ServerStreamWrapper) SendMsg(m interface{}) error {
+func (wrapper *ServerStreamWrapper) SendMsg(m any) error {
 	wrapper.sendMu.Lock()
 	defer wrapper.sendMu.Unlock()
 

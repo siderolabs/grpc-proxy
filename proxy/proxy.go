@@ -75,7 +75,7 @@ func RegisterService(server grpc.ServiceRegistrar, director StreamDirector, serv
 
 	fakeDesc := &grpc.ServiceDesc{
 		ServiceName: serviceName,
-		HandlerType: (*interface{})(nil),
+		HandlerType: (*any)(nil),
 	}
 
 	for _, m := range streamer.options.methodNames {

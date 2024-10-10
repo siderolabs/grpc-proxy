@@ -109,7 +109,7 @@ func (s *handler) forwardClientsToServerMultiUnary(sources []backendConnection, 
 	payloadCh := make(chan []byte, len(sources))
 	errCh := make(chan error, len(sources))
 
-	for i := range len(sources) {
+	for i := range sources {
 		go func(src *backendConnection) {
 			errCh <- func() error {
 				if src.connError != nil {

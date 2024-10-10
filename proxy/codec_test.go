@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/mem"
 
 	"github.com/siderolabs/grpc-proxy/proxy"
 )
@@ -12,14 +13,24 @@ func TestCodec_ReadYourWrites(t *testing.T) {
 	framePtr := proxy.NewFrame(nil)
 	data := []byte{0xDE, 0xAD, 0xBE, 0xEF}
 	codec := proxy.Codec()
-	require.NoError(t, codec.Unmarshal(data, framePtr), "unmarshalling must go ok")
+
+	buffer := mem.Copy(data, mem.DefaultBufferPool())
+	defer buffer.Free()
+
+	require.NoError(t, codec.Unmarshal(mem.BufferSlice{buffer}, framePtr), "unmarshalling must go ok")
 	out, err := codec.Marshal(framePtr)
 	require.NoError(t, err, "no marshal error")
-	require.Equal(t, data, out, "output and data must be the same")
+	require.Equal(t, data, out.Materialize(), "output and data must be the same")
+
+	out.Free()
+	buffer.Free()
+	buffer = mem.Copy([]byte{0x55}, mem.DefaultBufferPool())
 
 	// reuse
-	require.NoError(t, codec.Unmarshal([]byte{0x55}, framePtr), "unmarshalling must go ok")
+	require.NoError(t, codec.Unmarshal(mem.BufferSlice{buffer}, framePtr), "unmarshalling must go ok")
 	out, err = codec.Marshal(framePtr)
 	require.NoError(t, err, "no marshal error")
-	require.Equal(t, []byte{0x55}, out, "output and data must be the same")
+	require.Equal(t, []byte{0x55}, out.Materialize(), "output and data must be the same")
+
+	out.Free()
 }

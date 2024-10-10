@@ -229,7 +229,7 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	s.serverClientConn, err = grpc.NewClient(
 		s.serverListener.Addr().String(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+		grpc.WithDefaultCallOptions(grpc.ForceCodecV2(proxy.Codec())),
 	)
 	require.NoError(s.T(), err, "must not error on deferred client Dial")
 
@@ -255,7 +255,7 @@ func (s *ProxyOne2OneSuite) SetupSuite() {
 	}
 
 	s.proxy = grpc.NewServer(
-		grpc.ForceServerCodec(proxy.Codec()),
+		grpc.ForceServerCodecV2(proxy.Codec()),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 

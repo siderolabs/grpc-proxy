@@ -1,19 +1,18 @@
-# syntax = docker/dockerfile-upstream:1.7.1-labs
+# syntax = docker/dockerfile-upstream:1.10.0-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-05-27T14:20:35Z by kres b5844f8.
+# Generated on 2024-10-10T19:23:45Z by kres 34e72ac.
 
 ARG TOOLCHAIN
 
 # runs markdownlint
-FROM docker.io/node:22.2.0-alpine3.19 AS lint-markdown
+FROM docker.io/oven/bun:1.1.29-alpine AS lint-markdown
 WORKDIR /src
-RUN npm i -g markdownlint-cli@0.40.0
-RUN npm i sentences-per-line@0.2.1
+RUN bun i markdownlint-cli@0.41.0 sentences-per-line@0.2.1
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
-RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules node_modules/sentences-per-line/index.js .
+RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules node_modules/sentences-per-line/index.js .
 
 # collects proto specs
 FROM scratch AS proto-specs
@@ -25,14 +24,17 @@ RUN apk --update --no-cache add bash curl build-base protoc protobuf-dev
 
 # build tools
 FROM --platform=${BUILDPLATFORM} toolchain AS tools
-ENV GO111MODULE on
+ENV GO111MODULE=on
 ARG CGO_ENABLED
-ENV CGO_ENABLED ${CGO_ENABLED}
+ENV CGO_ENABLED=${CGO_ENABLED}
 ARG GOTOOLCHAIN
-ENV GOTOOLCHAIN ${GOTOOLCHAIN}
+ENV GOTOOLCHAIN=${GOTOOLCHAIN}
 ARG GOEXPERIMENT
-ENV GOEXPERIMENT ${GOEXPERIMENT}
-ENV GOPATH /go
+ENV GOEXPERIMENT=${GOEXPERIMENT}
+ENV GOPATH=/go
+ARG GOIMPORTS_VERSION
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install golang.org/x/tools/cmd/goimports@v${GOIMPORTS_VERSION}
+RUN mv /go/bin/goimports /bin
 ARG PROTOBUF_GO_VERSION
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go /bin
@@ -42,9 +44,6 @@ RUN mv /go/bin/protoc-gen-go-grpc /bin
 ARG GRPC_GATEWAY_VERSION
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION}
 RUN mv /go/bin/protoc-gen-grpc-gateway /bin
-ARG GOIMPORTS_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install golang.org/x/tools/cmd/goimports@v${GOIMPORTS_VERSION}
-RUN mv /go/bin/goimports /bin
 ARG DEEPCOPY_VERSION
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install github.com/siderolabs/deep-copy@${DEEPCOPY_VERSION} \
 	&& mv /go/bin/deep-copy /bin/deep-copy
@@ -85,7 +84,7 @@ RUN FILES="$(gofumpt -l .)" && test -z "${FILES}" || (echo -e "Source code is no
 FROM base AS lint-golangci-lint
 WORKDIR /src
 COPY .golangci.yml .
-ENV GOGC 50
+ENV GOGC=50
 RUN golangci-lint config verify --config .golangci.yml
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/root/.cache/golangci-lint --mount=type=cache,target=/go/pkg golangci-lint run --config .golangci.yml
 

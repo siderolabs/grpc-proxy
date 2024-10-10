@@ -562,7 +562,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 		conn, err = grpc.NewClient(
 			s.serverListeners[i].Addr().String(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithDefaultCallOptions(grpc.ForceCodec(proxy.Codec())),
+			grpc.WithDefaultCallOptions(grpc.ForceCodecV2(proxy.Codec())),
 		)
 		require.NoError(s.T(), err)
 
@@ -621,7 +621,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 	}
 
 	s.proxy = grpc.NewServer(
-		grpc.ForceServerCodec(proxy.Codec()),
+		grpc.ForceServerCodecV2(proxy.Codec()),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(director)),
 	)
 	// Ping handler is handled as an explicit registration and not as a TransparentHandler.
