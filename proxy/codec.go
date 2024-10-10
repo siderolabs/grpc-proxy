@@ -57,6 +57,8 @@ func (c *rawCodec) Marshal(v any) (data mem.BufferSlice, err error) {
 	} else {
 		pool := mem.DefaultBufferPool()
 		buf := pool.Get(len(f.payload))
+		copy(*buf, f.payload)
+
 		data = append(data, mem.NewBuffer(buf, pool))
 	}
 
