@@ -234,6 +234,7 @@ func (s *ProxyOne2OneSuite) testStream(client pb.TestServiceClient) {
 		if i == 0 {
 			// Check that the header arrives before all entries.
 			var headerMd metadata.MD
+
 			headerMd, err = stream.Header()
 			require.NoError(s.T(), err, "PingStream headers should not error.")
 			assert.Contains(s.T(), headerMd, serverHeaderMdKey, "PingStream response headers user contain metadata")
@@ -259,9 +260,9 @@ func (s *ProxyOne2OneSuite) TestPingStream_StressTest() {
 func (s *ProxyOne2OneSuite) SetupSuite() {
 	var err error
 
-	s.proxyListener, err = net.Listen("tcp", "127.0.0.1:0")
+	s.proxyListener, err = (&net.ListenConfig{}).Listen(s.T().Context(), "tcp", "127.0.0.1:0")
 	require.NoError(s.T(), err, "must be able to allocate a port for proxyListener")
-	s.serverListener, err = net.Listen("tcp", "127.0.0.1:0")
+	s.serverListener, err = (&net.ListenConfig{}).Listen(s.T().Context(), "tcp", "127.0.0.1:0")
 	require.NoError(s.T(), err, "must be able to allocate a port for serverListener")
 
 	s.server = grpc.NewServer()

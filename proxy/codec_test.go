@@ -24,6 +24,7 @@ func TestCodec_ReadYourWrites(t *testing.T) {
 			codec := proxy.Codec()
 
 			buffer := mem.Copy(val, mem.DefaultBufferPool())
+
 			defer func() { buffer.Free() }()
 
 			require.NoError(t, codec.Unmarshal(mem.BufferSlice{buffer}, framePtr), "unmarshalling must go ok")

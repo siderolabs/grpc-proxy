@@ -417,6 +417,7 @@ func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexWorks() {
 		// each upstream should send back response
 		for range numUpstreams {
 			var resp *pb.MultiPingResponse
+
 			resp, err = stream.Recv()
 			s.Require().NoError(err)
 
@@ -431,6 +432,7 @@ func (s *ProxyOne2ManySuite) TestPingStream_FullDuplexWorks() {
 		if i == 0 {
 			// Check that the header arrives before all entries.
 			var headerMd metadata.MD
+
 			headerMd, err = stream.Header()
 			require.NoError(s.T(), err, "PingStream headers should not error.")
 			assert.Contains(s.T(), headerMd, serverHeaderMdKey, "PingStream response headers user contain metadata")
@@ -534,13 +536,13 @@ func (s *ProxyOne2ManySuite) TearDownTest() {
 func (s *ProxyOne2ManySuite) SetupSuite() {
 	var err error
 
-	s.proxyListener, err = net.Listen("tcp", "127.0.0.1:0")
+	s.proxyListener, err = (&net.ListenConfig{}).Listen(s.T().Context(), "tcp", "127.0.0.1:0")
 	require.NoError(s.T(), err, "must be able to allocate a port for proxyListener")
 
 	s.serverListeners = make([]net.Listener, numUpstreams)
 
 	for i := range s.serverListeners {
-		s.serverListeners[i], err = net.Listen("tcp", "127.0.0.1:0")
+		s.serverListeners[i], err = (&net.ListenConfig{}).Listen(s.T().Context(), "tcp", "127.0.0.1:0")
 		require.NoError(s.T(), err, "must be able to allocate a port for serverListener")
 	}
 
@@ -559,6 +561,7 @@ func (s *ProxyOne2ManySuite) SetupSuite() {
 
 	for i := range backends {
 		var conn *grpc.ClientConn
+
 		conn, err = grpc.NewClient(
 			s.serverListeners[i].Addr().String(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

@@ -238,6 +238,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 
 						return s.sendError(src, dst, err)
 					}
+
 					if j == 0 {
 						// This is a bit of a hack, but client to server headers are only readable after first client msg is
 						// received but must be written to server stream before the first msg is flushed.
@@ -251,6 +252,7 @@ func (s *handler) forwardClientsToServerMultiStreaming(sources []backendConnecti
 					}
 
 					var err error
+
 					f.payload, err = src.backend.AppendInfo(true, f.payload)
 					if err != nil {
 						return fmt.Errorf("error appending info for %s: %w", src.backend, err)
